@@ -17,99 +17,157 @@
 #include "omv_boardconfig.h"
 
 static const uint8_t default_regs[][2] = {
-    {COM3,          COM3_SWAP_YUV},
-    {COM7,          COM7_RES_VGA | COM7_FMT_RGB565 | COM7_FMT_RGB},
 
-    {COM4,          OMV_OV7725_PLL_CONFIG},
-    {CLKRC,         0xC0}, /* Res/Bypass pre-scalar */
+// From App Note.
 
-    // VGA Window Size
-    {HSTART,        0x23},
-    {HSIZE,         0xA0},
-    {VSTART,        0x07},
-    {VSIZE,         0xF0},
-    {HREF,          0x00},
+    {0x3d, 0x03},
+    {0x17, 0x22},
+    {0x18, 0xa4},
+    {0x19, 0x07},
+    {0x1a, 0xf0},
+    {0x32, 0x00},
+    {0x29, 0xa0},
+    {0x2c, 0xf0},
+    {0x2a, 0x00},
+    {0x11, 0x40}, // {0x11, 0x01},
 
-    // Scale down to QVGA Resoultion
-    {HOUTSIZE,      0x50},
-    {VOUTSIZE,      0x78},
+    {0x42, 0x7f},
+    {0x4d, 0x09},
+    {0x63, 0xe0},
+    {0x64, 0xff},
+    {0x65, 0x20 | DSP_CTRL2_VDCW_EN | DSP_CTRL2_HDCW_EN | DSP_CTRL2_HZOOM_EN | DSP_CTRL2_VZOOM_EN},
+    {0x66, 0x00},
+    {0x67, 0x48},
 
-    {COM12,         0x03},
-    {EXHCH,         0x00},
-    {TGT_B,         0x7F},
-    {FIXGAIN,       0x09},
-    {AWB_CTRL0,     0xE0},
-    {DSP_CTRL1,     0xFF},
+    {COM8,              0xf0},
+    {COM4,              OMV_OV7725_PLL_CONFIG}, // {0x0d, 0x41},
+    {0x0f, 0xc5},
+    {0x14, 0x11},
+    {0x22, 0xff}, // {0x22, 0x7f},
+    {0x23, 0x01}, // {0x23, 0x03},
+    {0x24, 0x40},
+    {0x25, 0x30},
+    {0x26, 0xa1},
+    {0x2b, 0x00},
+    {0x6b, 0xaa},
+    {0x13, 0xff},
 
-    {DSP_CTRL2,     DSP_CTRL2_VDCW_EN | DSP_CTRL2_HDCW_EN | DSP_CTRL2_HZOOM_EN | DSP_CTRL2_VZOOM_EN},
-
-    {DSP_CTRL3,     0x00},
-    {DSP_CTRL4,     0x00},
-    {DSPAUTO,       0xFF},
-
-    {COM8,          0xF0},
-    {COM6,          0xC5},
-    {COM9,          0x21},
-    {BDBASE,        0x7F},
-    {BDSTEP,        0x03},
-    {AEW,           0x96},
-    {AEB,           0x64},
-    {VPT,           0xA1},
-    {EXHCL,         0x00},
-    {AWB_CTRL3,     0xAA},
-    {COM8,          0xFF},
-
-    //Gamma
-    {GAM1,          0x0C},
-    {GAM2,          0x16},
-    {GAM3,          0x2A},
-    {GAM4,          0x4E},
-    {GAM5,          0x61},
-    {GAM6,          0x6F},
-    {GAM7,          0x7B},
-    {GAM8,          0x86},
-    {GAM9,          0x8E},
-    {GAM10,         0x97},
-    {GAM11,         0xA4},
-    {GAM12,         0xAF},
-    {GAM13,         0xC5},
-    {GAM14,         0xD7},
-    {GAM15,         0xE8},
-
-    {SLOP,          0x20},
     {EDGE1,         0x05},
+    {DNSOFF,        0x01},
     {EDGE2,         0x03},
     {EDGE3,         0x00},
-    {DNSOFF,        0x01},
-
-    {MTX1,          0xB0},
-    {MTX2,          0x9D},
+    {MTX1,          0xb0},
+    {MTX2,          0x9d},
     {MTX3,          0x13},
     {MTX4,          0x16},
-    {MTX5,          0x7B},
+    {MTX5,          0x7b},
     {MTX6,          0x91},
-    {MTX_CTRL,      0x1E},
-
+    {MTX_CTRL,      0x1e},
     {BRIGHTNESS,    0x08},
     {CONTRAST,      0x20},
     {UVADJ0,        0x81},
-    {SDE,           (SDE_CONT_BRIGHT_EN | SDE_SATURATION_EN)},
+    {SDE,           SDE_CONT_BRIGHT_EN | SDE_SATURATION_EN},
 
-    // For 30 fps/60Hz
-    {DM_LNL,        0x00},
-    {DM_LNH,        0x00},
-    {BDBASE,        0x7F},
-    {BDSTEP,        0x03},
+    {GAM1,          0x0c},
+    {GAM2,          0x16},
+    {GAM3,          0x2a},
+    {GAM4,          0x4e},
+    {GAM5,          0x61},
+    {GAM6,          0x6f},
+    {GAM7,          0x7b},
+    {GAM8,          0x86},
+    {GAM9,          0x8e},
+    {GAM10,         0x97},
+    {GAM11,         0xa4},
+    {GAM12,         0xaf},
+    {GAM13,         0xc5},
+    {GAM14,         0xd7},
+    {GAM15,         0xe8},
+    {SLOP,          0x20},
 
-    // Lens Correction, should be tuned with real camera module
-    {LC_CTR,        0x01}, // Enable LC and use 1 coefficient for all 3 channels
-    {LC_RADI,       0x30}, // The radius of the circle where no compensation applies
-    {LC_COEF,       0x30}, // RGB Lens correction coefficient
+    {0x33, 0x00},
+    {0x22, 0x7f},
+    {0x23, 0x03},
 
-    // Frame reduction in night mode.
-    {COM5,          0xD5},
+    {0x4a, 0x10},
+    {0x49, 0x10},
+    {0x4b, 0x14},
+    {0x4c, 0x17},
+    {0x46, 0x05},
+    {0x0e, 0xe5}, // {0x0e, 0x65},
 
-    {0x00,          0x00},
+// OpenMV Custom.
+
+    {0x34, 0x00},
+    {0x2d, 0x00},
+    {0x2e, 0x00},
+
+    {0x69, 0x5d},
+
+    {COM7,          COM7_RES_VGA | COM7_FMT_RGB565 | COM7_FMT_RGB},
+
+// End.
+
+    {0x00, 0x00},
+
+//    {CLKRC,         0xC0}, /* Res/Bypass pre-scalar */
+
+//    // VGA Window Size
+//    {HSTART,        0x23},
+//    {HSIZE,         0xA0},
+//    {VSTART,        0x07},
+//    {VSIZE,         0xF0},
+//    {HREF,          0x00},
+
+//    // Scale down to QVGA Resoultion
+//    {HOUTSIZE,      0x50},
+//    {VOUTSIZE,      0x78},
+
+//    {COM12,         0x03},
+//    {EXHCH,         0x00},
+//    {TGT_B,         0x7F},
+//    {FIXGAIN,       0x09},
+//    {AWB_CTRL0,     0xE0},
+//    {DSP_CTRL1,     0xFF},
+
+//    {DSP_CTRL2,     DSP_CTRL2_VDCW_EN | DSP_CTRL2_HDCW_EN | DSP_CTRL2_HZOOM_EN | DSP_CTRL2_VZOOM_EN},
+
+//    {DSP_CTRL3,     0x00},
+//    {DSP_CTRL4,     0x00},
+//    {DSPAUTO,       0xFF},
+
+//    {COM8,          0xF0},
+//    {COM6,          0xC5},
+//    {COM9,          0x21},
+//    {BDBASE,        0x7F},
+//    {BDSTEP,        0x03},
+//    {AEW,           0x96},
+//    {AEB,           0x64},
+//    {VPT,           0xA1},
+//    {EXHCL,         0x00},
+//    {AWB_CTRL3,     0xAA},
+//    {COM8,          0xFF},
+
+//    {EDGE1,         0x05},
+//    {EDGE2,         0x03},
+//    {EDGE3,         0x00},
+//    {DNSOFF,        0x01},
+
+//    // For 30 fps/60Hz
+//    {DM_LNL,        0x00},
+//    {DM_LNH,        0x00},
+//    {BDBASE,        0x7F},
+//    {BDSTEP,        0x03},
+
+//    // Lens Correction, should be tuned with real camera module
+//    {LC_CTR,        0x01}, // Enable LC and use 1 coefficient for all 3 channels
+//    {LC_RADI,       0x30}, // The radius of the circle where no compensation applies
+//    {LC_COEF,       0x30}, // RGB Lens correction coefficient
+
+//    // Frame reduction in night mode.
+//    {COM5,          0xD5},
+
+//    {0x00,          0x00},
 };
 
 #define NUM_BRIGHTNESS_LEVELS (9)
@@ -153,24 +211,21 @@ static const uint8_t saturation_regs[NUM_SATURATION_LEVELS][2] = {
 
 static int reset(sensor_t *sensor)
 {
-    int i=0;
-    const uint8_t (*regs)[2];
-
     // Reset all registers
-    cambus_writeb(sensor->slv_addr, COM7, COM7_RESET);
+    int ret = cambus_writeb(sensor->slv_addr, COM7, COM7_RESET);
 
     // Delay 10 ms
     systick_sleep(10);
 
     // Write default regsiters
-    for (i=0, regs = default_regs; regs[i][0]; i++) {
-        cambus_writeb(sensor->slv_addr, regs[i][0], regs[i][1]);
+    for (int i = 0; default_regs[i][0]; i++) {
+        ret |= cambus_writeb(sensor->slv_addr, default_regs[i][0], default_regs[i][1]);
     }
 
-    // Delay
+    // Delay 30 ms
     systick_sleep(30);
 
-    return 0;
+    return ret;
 }
 
 static int sleep(sensor_t *sensor, int enable)
@@ -210,18 +265,17 @@ static int set_pixformat(sensor_t *sensor, pixformat_t pixformat)
     switch (pixformat) {
         case PIXFORMAT_RGB565:
             reg = COM7_SET_FMT(reg, COM7_FMT_RGB);
-            ret = cambus_writeb(sensor->slv_addr, DSP_CTRL4, 0);
+            ret |= cambus_writeb(sensor->slv_addr, DSP_CTRL4, DSP_CTRL4_YUV_RGB);
             break;
         case PIXFORMAT_YUV422:
         case PIXFORMAT_GRAYSCALE:
             reg = COM7_SET_FMT(reg, COM7_FMT_YUV);
-            ret = cambus_writeb(sensor->slv_addr, DSP_CTRL4, 0);
+            ret |= cambus_writeb(sensor->slv_addr, DSP_CTRL4, DSP_CTRL4_YUV_RGB);
             break;
         case PIXFORMAT_BAYER:
             reg = COM7_SET_FMT(reg, COM7_FMT_P_BAYER);
-            ret = cambus_writeb(sensor->slv_addr, DSP_CTRL4, DSP_CTRL4_RAW8);
+            ret |= cambus_writeb(sensor->slv_addr, DSP_CTRL4, DSP_CTRL4_RAW8);
             break;
-
         default:
             return -1;
     }
@@ -255,7 +309,6 @@ static int set_framesize(sensor_t *sensor, framesize_t framesize)
         ret |= cambus_writeb(sensor->slv_addr, HSIZE,  0x50);
         ret |= cambus_writeb(sensor->slv_addr, VSTART, 0x03);
         ret |= cambus_writeb(sensor->slv_addr, VSIZE,  0x78);
-        ret |= cambus_writeb(sensor->slv_addr, HREF,   0x00);
 
         // Enable auto-scaling/zooming factors
         ret |= cambus_writeb(sensor->slv_addr, DSPAUTO, 0xFF);
@@ -271,15 +324,14 @@ static int set_framesize(sensor_t *sensor, framesize_t framesize)
         ret |= cambus_writeb(sensor->slv_addr, HSIZE,  0xA0);
         ret |= cambus_writeb(sensor->slv_addr, VSTART, 0x07);
         ret |= cambus_writeb(sensor->slv_addr, VSIZE,  0xF0);
-        ret |= cambus_writeb(sensor->slv_addr, HREF,   0x00);
 
         // Disable auto-scaling/zooming factors
         ret |= cambus_writeb(sensor->slv_addr, DSPAUTO, 0xF3);
 
         // Clear auto-scaling/zooming factors
         ret |= cambus_writeb(sensor->slv_addr, SCAL0, 0x00);
-        ret |= cambus_writeb(sensor->slv_addr, SCAL1, 0x00);
-        ret |= cambus_writeb(sensor->slv_addr, SCAL2, 0x00);
+        ret |= cambus_writeb(sensor->slv_addr, SCAL1, 0x40);
+        ret |= cambus_writeb(sensor->slv_addr, SCAL2, 0x40);
     }
 
     return ret;
@@ -316,7 +368,6 @@ static int set_brightness(sensor_t *sensor, int level)
 static int set_saturation(sensor_t *sensor, int level)
 {
     int ret=0;
-
     level += (NUM_SATURATION_LEVELS / 2 );
     if (level < 0 || level >= NUM_SATURATION_LEVELS) {
         return -1;
@@ -341,7 +392,7 @@ static int set_colorbar(sensor_t *sensor, int enable)
 {
     uint8_t reg;
     int ret = cambus_readb(sensor->slv_addr, COM3, &reg);
-    
+
     // Enable colorbar test pattern output
     reg = COM3_SET_CBAR(reg, enable);
     ret |= cambus_writeb(sensor->slv_addr, COM3, reg);
@@ -570,7 +621,7 @@ static int set_special_effect(sensor_t *sensor, sde_t sde)
         case SDE_NORMAL:
             ret |= cambus_writeb(sensor->slv_addr, SDE, 0x06);
             ret |= cambus_writeb(sensor->slv_addr, UFIX, 0x80);
-            ret |= cambus_writeb(sensor->slv_addr, UFIX, 0x80);
+            ret |= cambus_writeb(sensor->slv_addr, VFIX, 0x80);
             break;
         default:
             return -1;
@@ -586,6 +637,7 @@ static int set_lens_correction(sensor_t *sensor, int enable, int radi, int coef)
     ret |= cambus_writeb(sensor->slv_addr, LC_CTR, (enable&0x01));
     ret |= cambus_writeb(sensor->slv_addr, LC_RADI, radi);
     ret |= cambus_writeb(sensor->slv_addr, LC_COEF, coef);
+
     return ret;
 }
 
