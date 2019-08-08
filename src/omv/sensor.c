@@ -14,6 +14,7 @@
 #include "ov9650.h"
 #include "ov2640.h"
 #include "ov7725.h"
+#include "ov5640.h"
 #include "mt9v034.h"
 #include "lepton.h"
 #include "sensor.h"
@@ -21,9 +22,7 @@
 #include "framebuffer.h"
 #include "omv_boardconfig.h"
 
-#define OV_CHIP_ID      (0x0A)
-#define ON_CHIP_ID      (0x00)
-#define MAX_XFER_SIZE   (0xFFFC*4)
+#define MAX_XFER_SIZE   (0xFFFF*4)
 
 sensor_t           sensor     = {0};
 TIM_HandleTypeDef  TIMHandle  = {0};
@@ -63,6 +62,7 @@ const int resolution[][2] = {
     {720,  480 },    /* WVGA      */
     {752,  480 },    /* WVGA2     */
     {800,  600 },    /* SVGA      */
+    {1024, 768 },    /* XGA       */
     {1280, 1024},    /* SXGA      */
     {1600, 1200},    /* UXGA      */
 };
@@ -305,38 +305,56 @@ int sensor_init()
     // Set default snapshot function.
     sensor.snapshot = sensor_snapshot;
 
-    if (sensor.slv_addr == LEPTON_ID) {
+    switch (sensor.slv_addr) {
+    case OV7725_SLV_ADDR:
+        cambus_readb(sensor.slv_addr, OV_CHIP_ID, &sensor.chip_id);
+        break;
+    case OV2640_SLV_ADDR:
+        cambus_readb(sensor.slv_addr, OV_CHIP_ID, &sensor.chip_id);
+        break;
+    case MT9V034_SLV_ADDR:
+        cambus_readb(sensor.slv_addr, ON_CHIP_ID, &sensor.chip_id);
+        break;
+    case LEPTON_SLV_ADDR:
         sensor.chip_id = LEPTON_ID;
+        break;
+    case OV5640_SLV_ADDR:
+        cambus_readb2(sensor.slv_addr, OV5640_CHIP_ID, &sensor.chip_id);
+        break;
+    default:
+        return -3;
+        break;
+    }
+
+    switch (sensor.chip_id)
+    {
+    case OV7725_ID:
+        init_ret = ov7725_init(&sensor);
+        break;
+    case MT9V034_ID:
+        if (extclk_config(MT9V034_XCLK_FREQ) != 0) {
+            return -3;
+        }
+        init_ret = mt9v034_init(&sensor);
+        break;
+    case LEPTON_ID:
         if (extclk_config(LEPTON_XCLK_FREQ) != 0) {
             return -3;
         }
         init_ret = lepton_init(&sensor);
-    } else {
-        // Read ON semi sensor ID.
-        cambus_readb(sensor.slv_addr, ON_CHIP_ID, &sensor.chip_id);
-        if (sensor.chip_id == MT9V034_ID) {
-            if (extclk_config(MT9V034_XCLK_FREQ) != 0) {
-                return -3;
-            }
-            init_ret = mt9v034_init(&sensor);
-        } else { // Read OV sensor ID.
-            cambus_readb(sensor.slv_addr, OV_CHIP_ID, &sensor.chip_id);
-            // Initialize sensor struct.
-            switch (sensor.chip_id) {
-                case OV9650_ID:
-                    init_ret = ov9650_init(&sensor);
-                    break;
-                case OV2640_ID:
-                    init_ret = ov2640_init(&sensor);
-                    break;
-                case OV7725_ID:
-                    init_ret = ov7725_init(&sensor);
-                    break;
-                default:
-                    // Sensor is not supported.
-                    return -3;
-            }
-        }
+        break;
+    case OV5640_ID:
+        init_ret = ov5640_init(&sensor);
+        break;
+    case OV2640_ID:
+        init_ret = ov2640_init(&sensor);
+        break;
+    case OV9650_ID:
+        init_ret = ov9650_init(&sensor);
+        break;
+    default:
+        return -3;
+        break;
     }
 
     if (init_ret != 0 ) {
@@ -423,7 +441,7 @@ int sensor_shutdown(int enable)
     return 0;
 }
 
-int sensor_read_reg(uint8_t reg_addr)
+int sensor_read_reg(uint16_t reg_addr)
 {
     if (sensor.read_reg == NULL) {
         // Operation not supported
@@ -432,7 +450,7 @@ int sensor_read_reg(uint8_t reg_addr)
     return sensor.read_reg(&sensor, reg_addr);
 }
 
-int sensor_write_reg(uint8_t reg_addr, uint16_t reg_data)
+int sensor_write_reg(uint16_t reg_addr, uint16_t reg_data)
 {
     if (sensor.write_reg == NULL) {
         // Operation not supported
@@ -979,7 +997,13 @@ int sensor_snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
                 break;
             case PIXFORMAT_JPEG:
                 // Read the number of data items transferred
-                MAIN_FB()->bpp = (MAX_XFER_SIZE - __HAL_DMA_GET_COUNTER(&DMAHandle))*4;
+                MAIN_FB()->bpp = ((MAX_XFER_SIZE/4) - __HAL_DMA_GET_COUNTER(&DMAHandle))*4;
+                // Remove trailing zeros...
+                if (MAIN_FB()->bpp) {
+                    while (!MAIN_FB()->pixels[MAIN_FB()->bpp - 1]) {
+                        MAIN_FB()->bpp -= 1;
+                    }
+                }
                 break;
             default:
                 break;
