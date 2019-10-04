@@ -6,6 +6,84 @@
  * main function.
  *
  */
+
+//#define OPENMVRT_SEEED --> Is already defined if Target in Makefile: TARGET ?= OPENMVRT_SEEED
+
+#ifdef OPENMVRT_SEEED
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include "mpconfig.h"
+#include "systick.h"
+//#include "pendsv.h"
+#include "qstr.h"
+#include "nlr.h"
+#include "lexer.h"
+#include "parse.h"
+#include "compile.h"
+#include "runtime.h"
+#include "obj.h"
+#include "objmodule.h"
+#include "objstr.h"
+#include "gc.h"
+#include "stackctrl.h"
+#include "gccollect.h"
+#include "readline.h"
+
+
+#include "repl.h"
+
+#include "mperrno.h"
+#include "lib/utils/pyexec.h"
+
+//#include "timer.h"
+#include "pin.h"
+//#include "usb.h"
+//#include "rtc.h"
+//#include "storage.h"
+//#include "sdcard.h"
+#include "ff.h"
+//#include "modnetwork.h"
+//#include "modmachine.h"
+
+#include "extmod/vfs.h"
+#include "extmod/vfs_fat.h"
+#include "lib/utils/pyexec.h"
+
+//#include "irq.h"
+//#include "rng.h"
+//#include "led.h"
+//#include "spi.h"
+//#include "i2c.h"
+//#include "uart.h"
+//#include "dac.h"
+//#include "can.h"
+#include "extint.h"
+//#include "servo.h"
+
+//#include "sensor.h"
+//#include "usbdbg.h"
+//#include "wifidbg.h"
+//#include "sdram.h"
+#include "fb_alloc.h"
+#include "ff_wrapper.h"
+
+//#include "usbd_core.h"
+//#include "usbd_desc.h"
+//#include "usbd_cdc_msc_hid.h"
+//#include "usbd_cdc_interface.h"
+//#include "usbd_msc_storage.h"
+
+#include "py_sensor.h"
+#include "py_image.h"
+#include "py_lcd.h"
+#include "py_fir.h"
+#include "py_tv.h"
+
+#include "framebuffer.h"
+
+#include "ini.h"
+#else
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -73,12 +151,20 @@
 #include "framebuffer.h"
 
 #include "ini.h"
+#endif
 
+#ifdef OPENMVRT_SEEED
+
+#else
 int errno;
 extern char _vfs_buf;
 static fs_user_mount_t *vfs_fat = (fs_user_mount_t *) &_vfs_buf;
 pyb_thread_t pyb_thread_main;
+#endif
 
+#ifdef OPENMVRT_SEEED
+
+#else
 static const char fresh_main_py[] =
 "# main.py -- put your code here!\n"
 "import pyb, time\n"
@@ -189,8 +275,15 @@ static const char fresh_selftest_py[] =
 "\n"
 ;
 #endif
+#endif
+
+
 
 void flash_error(int n) {
+
+#ifdef OPENMVRT_SEEED
+
+#else
     led_state(LED_RED, 0);
     led_state(LED_GREEN, 0);
     led_state(LED_BLUE, 0);
@@ -201,9 +294,17 @@ void flash_error(int n) {
         HAL_Delay(100);
     }
     led_state(LED_RED, 0);
+#endif
+
+
 }
 
+
+
 void NORETURN __fatal_error(const char *msg) {
+#ifdef OPENMVRT_SEEED
+	for (;;) {}
+#else
     FIL fp;
     if (f_open(&vfs_fat->fatfs, &fp, "ERROR.LOG",
                FA_WRITE|FA_CREATE_ALWAYS) == FR_OK) {
@@ -220,6 +321,8 @@ void NORETURN __fatal_error(const char *msg) {
         for (volatile uint delay = 0; delay < 500000; delay++) {
         }
     }
+#endif
+
 }
 
 void nlr_jump_fail(void *val) {
@@ -236,17 +339,27 @@ void __attribute__((weak))
 }
 #endif
 
+
+
+
 void f_touch(const char *path)
 {
+#ifdef OPENMVRT_SEEED
+
+#else
     FIL fp;
     if (f_stat(&vfs_fat->fatfs, path, NULL) != FR_OK) {
         f_open(&vfs_fat->fatfs, &fp, path, FA_WRITE | FA_CREATE_ALWAYS);
         f_close(&fp);
     }
+#endif
 }
 
 void make_flash_fs()
 {
+#ifdef OPENMVRT_SEEED
+
+#else
     FIL fp;
     UINT n;
 
@@ -276,6 +389,8 @@ void make_flash_fs()
     f_close(&fp);
 
     led_state(LED_RED, 0);
+#endif
+
 }
 
 #ifdef STACK_PROTECTOR
@@ -290,12 +405,21 @@ void NORETURN __stack_chk_fail(void)
 #endif
 
 typedef struct openmv_config {
+#ifdef OPENMVRT_SEEED
+
+#else
     bool wifidbg;
     wifidbg_config_t wifidbg_config;
+#endif
+
 } openmv_config_t;
 
 int ini_handler_callback(void *user, const char *section, const char *name, const char *value)
 {
+
+#ifdef OPENMVRT_SEEED
+
+#else
     openmv_config_t *openmv_config = (openmv_config_t *) user;
 
     #define MATCH(s, n) ((strcmp(section, (s)) == 0) && (strcmp(name, (n)) == 0))
@@ -335,14 +459,23 @@ int ini_handler_callback(void *user, const char *section, const char *name, cons
     } else {
         return 0;
     }
+#endif
 
     return 1;
 
     #undef MATCH
 }
 
+#ifdef OPENMVRT_SEEED
+
+#else
 FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 {
+
+	FRESULT res = FR_OK;
+	return res;
+
+
     nlr_buf_t nlr;
     bool interrupted = false;
     FRESULT f_res = f_stat(&vfs_fat->fatfs, path, NULL);
@@ -395,9 +528,41 @@ FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 
     return f_res;
 }
+#endif
 
 int main(void)
 {
+#ifdef OPENMVRT_SEEED
+    int stack_dummy;
+    stack_top = (char*)&stack_dummy;
+
+    #if MICROPY_ENABLE_GC
+    gc_init(heap, heap + sizeof(heap));
+    #endif
+    mp_init();
+    #if MICROPY_ENABLE_COMPILER
+    #if MICROPY_REPL_EVENT_DRIVEN
+    pyexec_event_repl_init();
+    for (;;) {
+        int c = mp_hal_stdin_rx_chr();
+        if (pyexec_event_repl_process_char(c)) {
+            break;
+        }
+    }
+    #else
+    pyexec_friendly_repl();
+    #endif
+    //do_str("print('hello world!', list(x+1 for x in range(10)), end='eol\\n')", MP_PARSE_SINGLE_INPUT);
+    //do_str("for i in range(10):\r\n  print(i)", MP_PARSE_FILE_INPUT);
+    #else
+    pyexec_frozen_module("frozentest.py");
+    #endif
+    mp_deinit();
+    return 0;
+
+
+
+#else
     int sensor_init_ret = 0;
     bool sdcard_mounted = false;
     bool first_soft_reset = true;
@@ -411,6 +576,7 @@ int main(void)
     //  - Configure the Flash prefetch, instruction and Data caches
     //  - Configure the Systick to generate an interrupt each 1 msec
     //  NOTE: The bootloader enables the CCM/DTCM memory.
+
     HAL_Init();
 
     // Basic sub-system init
@@ -642,4 +808,6 @@ soft_reset:
 
     first_soft_reset = false;
     goto soft_reset;
+#endif
+
 }
