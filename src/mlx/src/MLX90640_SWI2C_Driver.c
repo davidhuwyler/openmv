@@ -27,7 +27,7 @@
  
 //#include "mbed.h"
 #include "MLX90640_I2C_Driver.h"
-#include STM32_HAL_H
+//#include STM32_HAL_H
 #include "omv_boardconfig.h"
 
 //DigitalInOut sda(p9);

@@ -37,6 +37,7 @@ CMSIS_DIR=cmsis
 STUSB_DIR=stusb
 MICROPY_DIR=micropython
 OMV_DIR=omv
+OMV_IMXRT_DIR=$(OMV_DIR)/omv_imxrt_port
 LEPTON_DIR=lepton
 MLX_DIR=mlx
 WINC1500_DIR=winc1500
@@ -47,10 +48,16 @@ UVC_DIR=uvc
 OMV_QSTR_DEFS = $(TOP_DIR)/$(OMV_DIR)/py/qstrdefsomv.h
 
 # Target
-TARGET ?= OPENMV3
+TARGET ?= OPENMVRT_SEEED
+#TARGET ?= OPENMV4
 FW_DIR=$(TOP_DIR)/../firmware/$(TARGET)
 OMV_BOARD_CONFIG_DIR=$(TOP_DIR)/$(OMV_DIR)/boards/$(TARGET)/
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)/
+else
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/boards/$(TARGET)/
+endif
 
 # Debugging/Optimization
 ifeq ($(DEBUG), 1)
@@ -77,6 +84,63 @@ endif
 
 # Compiler Flags
 include $(OMV_BOARD_CONFIG_DIR)/omv_boardconfig.mk
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+
+OPENMVRT_SEEED_LD_DIR=$(MICROPY_DIR)/ports/imxrt/boards
+
+#CFLAGS_CORTEX_M7 = -DCPU_MIMXRT1052CVL5B -DCPU_MIMXRT1052CVL5B_cm7 -DFSL_RTOS_BM -DSDK_OS_BAREMETAL -DXIP_EXTERNAL_FLASH=1 -DXIP_BOOT_HEADER_ENABLE=1 -DSDK_DEBUGCONSOLE=0 -DCR_INTEGER_PRINTF -DPRINTF_FLOAT_ENABLE=0 -D__MCUXPRESSO -D__USE_CMSIS -DDEBUG -D__NEWLIB__ -O0 -fno-common -g3 -Wall -c -ffunction-sections -fdata-sections -ffreestanding -fno-builtin -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -D__NEWLIB__ -fstack-usage
+CFLAGS_CORTEX_M7 = -DCPU_MIMXRT1052CVL5B -DCPU_MIMXRT1052CVL5B_cm7 -DFSL_RTOS_BM -DSDK_OS_BAREMETAL -DSDK_DEBUGCONSOLE=0 -DCR_INTEGER_PRINTF -DPRINTF_FLOAT_ENABLE=0 -D__MCUXPRESSO -D__USE_CMSIS -DDEBUG -D__NEWLIB__ -O0 -fno-common -g3 -Wall -c -ffunction-sections -fdata-sections -ffreestanding -fno-builtin -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -D__NEWLIB__ -fstack-usage
+
+CFLAGS += $(CFLAGS_CORTEX_M7)
+CFLAGS += -D$(TARGET) -DARM_MATH_CM7 -D__FPU_PRESENT=1
+
+CMSIS_CFLAGS += -I$(TOP_DIR)/$(CMSIS_DIR)/include/
+
+NXP_CFLAGS += -I. -Iinclude
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/drivers
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/utilities
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/CMSIS
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/uart
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/phy
+
+MP_CFLAGS += -I$(BUILD)/$(MICROPY_DIR)/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/boards/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/py/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/mp-readline
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)
+#MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/core/inc/
+#MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/class/inc/
+MP_CFLAGS += -I$(MP_BOARD_CONFIG_DIR)
+
+OMV_CFLAGS += -I$(TOP_DIR)/$(OMV_DIR)/
+OMV_CFLAGS += -I$(TOP_DIR)/$(OMV_DIR)/py/
+OMV_CFLAGS += -I$(TOP_DIR)/$(OMV_DIR)/nn/
+OMV_CFLAGS += -I$(TOP_DIR)/$(OMV_DIR)/img/
+OMV_CFLAGS += -I$(OMV_BOARD_CONFIG_DIR)
+OMV_CFLAGS += -I$(TOP_DIR)/$(LEPTON_DIR)/include/
+OMV_CFLAGS += -I$(TOP_DIR)/$(MLX_DIR)/include/
+OMV_CFLAGS += -I$(TOP_DIR)/$(WINC1500_DIR)/include/
+
+OMV_IMRT_CFLAGS +=-I$(TOP_DIR)/$(OMV_IMXRT_DIR)/
+
+UVC_CFLAGS = $(CFLAGS)
+UVC_CFLAGS += -I$(OMV_BOARD_CONFIG_DIR)
+UVC_CFLAGS += -I$(TOP_DIR)/$(UVC_DIR)/include/
+
+BOOTLDR_CFLAGS = $(CFLAGS)
+BOOTLDR_CFLAGS += -I$(OMV_BOARD_CONFIG_DIR)
+BOOTLDR_CFLAGS += -I$(TOP_DIR)/$(BOOTLDR_DIR)/include/
+
+CFLAGS += $(CMSIS_CFLAGS) $(NXP_CFLAGS) $(MP_CFLAGS) $(OMV_CFLAGS) $(OMV_IMRT_CFLAGS) 
+
+else
+
 CFLAGS += -std=gnu99 -Wall -Werror -Warray-bounds -mthumb -nostartfiles -fdata-sections -ffunction-sections
 CFLAGS += -D$(MCU) -D$(CFLAGS_MCU) -D$(ARM_MATH) -DARM_MATH_DSP -DARM_NN_TRUNCATE\
           -fsingle-precision-constant -Wdouble-promotion -mcpu=$(CPU) -mtune=$(CPU) -mfpu=$(FPU) -mfloat-abi=hard
@@ -117,7 +181,23 @@ BOOTLDR_CFLAGS += -I$(OMV_BOARD_CONFIG_DIR)
 BOOTLDR_CFLAGS += -I$(TOP_DIR)/$(BOOTLDR_DIR)/include/
 
 CFLAGS += $(ST_CFLAGS) $(MP_CFLAGS) $(OMV_CFLAGS)
+endif
 
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+# Linker Flags
+LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
+          -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
+          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld
+
+# Linker Flags
+BOOTLDR_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
+               -nostdlib -Wl,--gc-sections -Wl,-T$(BUILD)/$(BOOTLDR_DIR)/MIMXRT1052.lds.lds
+
+# Linker Flags
+UVC_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
+               -nostdlib -Wl,--gc-sections -Wl,-T$(BUILD)/$(UVC_DIR)/MIMXRT1052.lds.lds
+else
 # Linker Flags
 LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
           -nostdlib -Wl,--gc-sections -Wl,-T$(BUILD)/stm32fxxx.lds
@@ -129,6 +209,7 @@ BOOTLDR_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-ab
 # Linker Flags
 UVC_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
                -nostdlib -Wl,--gc-sections -Wl,-T$(BUILD)/$(UVC_DIR)/stm32fxxx.lds
+endif
 
 #------------- Libraries ----------------#
 FIRM_OBJ += $(wildcard $(BUILD)/$(CMSIS_DIR)/src/dsp/CommonTables/*.o)
@@ -147,12 +228,38 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(CMSIS_DIR)/src/nn/SoftmaxFunctions/*.o)
 #FIRM_OBJ += $(wildcard $(BUILD)/$(CMSIS_DIR)/src/dsp/StatisticsFunctions/*.o)
 #FIRM_OBJ += $(wildcard $(BUILD)/$(CMSIS_DIR)/src/dsp/SupportFunctions/*.o)
 #FIRM_OBJ += $(wildcard $(BUILD)/$(CMSIS_DIR)/src/dsp/TransformFunctions/*.o)
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(N)/ports/imxrt/boards/$(TARGET)/
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/drivers*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities/io*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities/log*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities/str*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/middleware/sdkusb/phy*.o)
+else
 FIRM_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
+endif
+
 FIRM_OBJ += $(wildcard $(BUILD)/$(LEPTON_DIR)/src/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MLX_DIR)/src/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(WINC1500_DIR)/src/*.o)
 
 #------------- OpenMV Objects ----------------#
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/, \
+	main.o                                  \
+	xalloc.o                                \
+	fb_alloc.o                              \
+	umm_malloc.o                            \
+	ff_wrapper.o                            \
+	ini.o                                   \
+	framebuffer.o                           \
+	array.o                                 \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/, \
 	main.o                                  \
 	xalloc.o                                \
@@ -177,7 +284,62 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/, \
 	mutex.o                                 \
 	trace.o                                 \
 	)
+endif
 
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/img/,\
+	binary.o                                \
+	blob.o                                  \
+	clahe.o                                 \
+	draw.o                                  \
+	qrcode.o                                \
+	apriltag.o                              \
+	dmtx.o                                  \
+	zbar.o                                  \
+	fmath.o                                 \
+	fsort.o                                 \
+	qsort.o                                 \
+	fft.o                                   \
+	filter.o                                \
+	haar.o                                  \
+	imlib.o                                 \
+	collections.o                           \
+	stats.o                                 \
+	integral.o                              \
+	integral_mw.o                           \
+	kmeans.o                                \
+	lab_tab.o                               \
+	xyz_tab.o                               \
+	yuv_tab.o                               \
+	rainbow_tab.o                           \
+	rgb2rgb_tab.o                           \
+	invariant_tab.o                         \
+	mathop.o                                \
+	pool.o                                  \
+	point.o                                 \
+	rectangle.o                             \
+	bmp.o                                   \
+	ppm.o                                   \
+	gif.o                                   \
+	mjpeg.o                                 \
+	fast.o                                  \
+	agast.o                                 \
+	orb.o                                   \
+	template.o                              \
+	phasecorrelation.o                      \
+	shadow_removal.o                        \
+	font.o                                  \
+	lbp.o                                   \
+	eye.o                                   \
+	hough.o                                 \
+	line.o                                  \
+	lsd.o                                   \
+	sincos_tab.o                            \
+	edge.o                                  \
+	hog.o                                   \
+	selective_search.o                      \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/img/,\
 	binary.o                                \
 	blob.o                                  \
@@ -231,11 +393,20 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/img/,\
 	hog.o                                   \
 	selective_search.o                      \
 	)
+endif
+
 
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/nn/,\
 	nn.o                                    \
 	)
 
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
+	py_helper.o                             \
+	py_omv.o                                \
+	py_time.o                               \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
 	py_helper.o                             \
 	py_omv.o                                \
@@ -251,17 +422,32 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
 	py_cpufreq.o                            \
 	py_nn.o                                 \
 	)
+endif
 
-
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
+	boards/startup_mimxrt1052.o         \
+	mcusdk/system_MIMXRT1052.o              \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(CMSIS_DIR)/src/st/,\
 	$(STARTUP).o                                \
 	system_stm32fxxx.o                          \
 	)
+endif
+
 
 #------------- MicroPy Core -------------------#
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/py/*.o)
 
 #------------- MicroPy Objects ----------------#
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
+	pin.o                   \
+	pin_named_pins.o        \
+	pins_$(TARGET).o        \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	stm32_it.o              \
 	usbd_conf.o             \
@@ -315,6 +501,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	mpthreadport.o          \
 	posix_helpers.o         \
 	)
+endif
 
 # object file for frozen bytecode (frozen .mpy files)
 ifneq ($(FROZEN_MPY_DIR),)
@@ -322,6 +509,18 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,frozen_mpy.o)
 endif
 
 #------------- MicroPy Objects ----------------#
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/,\
+	utils/pyexec.o          \
+	utils/printf.o          \
+	utils/interrupt_char.o  \
+	utils/sys_stdio_mphal.o \
+	libc/string0.o          \
+	netutils/netutils.o     \
+	timeutils/timeutils.o   \
+	embed/abort_.o             \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/,\
 	utils/pyexec.o          \
 	utils/printf.o          \
@@ -334,6 +533,8 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/,\
 	berkeley-db-1.xx/mpool/*.o \
 	embed/abort_.o             \
 	)
+endif
+
 
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/libm/,\
 	math.o          \
@@ -368,7 +569,9 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/mp-readline/,\
 	readline.o               \
 	)
 
+ifeq ($(TARGET), OPENMVRT_SEEED)
 
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/usbdev/, \
 	core/src/usbd_core.o                \
 	core/src/usbd_ctlreq.o              \
@@ -378,7 +581,38 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/usbdev/, \
 	class/src/usbd_msc_scsi.o           \
 	class/src/usbd_msc_data.o           \
 	)
+endif
 
+ifeq ($(TARGET), OPENMVRT_SEEED)
+FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/extmod/,\
+	modujson.o          \
+	modure.o            \
+	moduzlib.o          \
+	moduhashlib.o       \
+	modubinascii.o      \
+	modurandom.o        \
+	moduselect.o        \
+	modutimeq.o         \
+	moduheapq.o         \
+	moductypes.o        \
+	vfs.o               \
+	vfs_fat.o           \
+	vfs_fat_file.o      \
+	vfs_reader.o        \
+	vfs_fat_diskio.o    \
+	virtpin.o           \
+	machine_mem.o       \
+	machine_i2c.o       \
+	machine_spi.o       \
+	machine_pulse.o     \
+	machine_signal.o    \
+	machine_pinbase.o   \
+	utime_mphal.o       \
+	modonewire.o        \
+	uos_dupterm.o       \
+	modframebuf.o       \
+	)
+else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/extmod/,\
 	modujson.o          \
 	modure.o            \
@@ -408,6 +642,8 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/extmod/,\
 	modframebuf.o       \
 	modbtree.o          \
 	)
+endif
+
 
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/oofatfs/,\
 	ff.o                \
@@ -468,6 +704,16 @@ UVC_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/img/,\
 
 UVC_OBJ += $(wildcard $(BUILD)/$(LEPTON_DIR)/src/*.o)
 UVC_OBJ += $(wildcard $(BUILD)/$(MLX_DIR)/src/*.o)
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+UVC_OBJ += $(addprefix $(BUILD)/$(OMV_IMXRT_DIR)/,\
+	overlay_manager.o                               \
+	)
+else
+
+endif
+
+
 ###################################################
 #Export Variables
 export Q
@@ -493,12 +739,28 @@ $(BUILD):
 	$(MKDIR) -p $@
 
 BOOTLOADER_OBJS: FIRMWARE_OBJS
+ifeq ($(TARGET), OPENMVRT_SEEED)
+else
 	$(MAKE)  -C $(BOOTLDR_DIR)              BUILD=$(BUILD)/$(BOOTLDR_DIR)  CFLAGS="$(BOOTLDR_CFLAGS) -MMD"
+endif
 
 UVC_OBJS: FIRMWARE_OBJS
+ifeq ($(TARGET), OPENMVRT_SEEED)
+else
 	$(MAKE)  -C $(UVC_DIR)                  BUILD=$(BUILD)/$(UVC_DIR)      CFLAGS="$(UVC_CFLAGS) -MMD"
+endif
 
 FIRMWARE_OBJS:
+ifeq ($(TARGET), OPENMVRT_SEEED)
+#	$(MAKE)  -C $(CMSIS_DIR)                BUILD=$(BUILD)/$(CMSIS_DIR)    CFLAGS="$(CFLAGS) -fno-strict-aliasing -MMD"
+#	$(MAKE)  -C $(STHAL_DIR)                BUILD=$(BUILD)/$(STHAL_DIR)    CFLAGS="$(CFLAGS) -MMD"
+	$(MAKE)  -C $(MICROPY_DIR)/ports/imxrt  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)
+#	$(MAKE)  -C $(MICROPY_DIR)/ports/stm32  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)
+	$(MAKE)  -C $(LEPTON_DIR)               BUILD=$(BUILD)/$(LEPTON_DIR)   CFLAGS="$(CFLAGS) -MMD"
+	$(MAKE)  -C $(MLX_DIR)                  BUILD=$(BUILD)/$(MLX_DIR)      CFLAGS="$(CFLAGS) -MMD"
+#	$(MAKE)  -C $(WINC1500_DIR)             BUILD=$(BUILD)/$(WINC1500_DIR) CFLAGS="$(CFLAGS) -MMD"
+	$(MAKE)  -C $(OMV_DIR)                  BUILD=$(BUILD)/$(OMV_DIR)      CFLAGS="$(CFLAGS) -MMD"
+else
 	$(MAKE)  -C $(CMSIS_DIR)                BUILD=$(BUILD)/$(CMSIS_DIR)    CFLAGS="$(CFLAGS) -fno-strict-aliasing -MMD"
 	$(MAKE)  -C $(STHAL_DIR)                BUILD=$(BUILD)/$(STHAL_DIR)    CFLAGS="$(CFLAGS) -MMD"
 	$(MAKE)  -C $(MICROPY_DIR)/ports/stm32  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)
@@ -506,37 +768,60 @@ FIRMWARE_OBJS:
 	$(MAKE)  -C $(MLX_DIR)                  BUILD=$(BUILD)/$(MLX_DIR)      CFLAGS="$(CFLAGS) -MMD"
 	$(MAKE)  -C $(WINC1500_DIR)             BUILD=$(BUILD)/$(WINC1500_DIR) CFLAGS="$(CFLAGS) -MMD"
 	$(MAKE)  -C $(OMV_DIR)                  BUILD=$(BUILD)/$(OMV_DIR)      CFLAGS="$(CFLAGS) -MMD"
+endif
+
 
 # This target generates the main/app firmware image located at 0x08010000
 $(FIRMWARE): FIRMWARE_OBJS
+ifeq ($(TARGET), OPENMVRT_SEEED)
+	$(ECHO) "Create the Firmware"
+	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld > $(BUILD)/MIMXRT1052.lds
+	$(ECHO) "Make the elf file..."
+	$(CC) $(LDFLAGS) $(FIRM_OBJ) -o $(FW_DIR)/$(FIRMWARE).elf -lgcc
+	$(ECHO) "Make the bin file..."
+	$(OBJCOPY) -Obinary $(FW_DIR)/$(FIRMWARE).elf $(FW_DIR)/$(FIRMWARE).bin
+	$(ECHO) "Make the dfu file..."
+	$(PYTHON) $(MKDFU) -b $(MAIN_APP_ADDR):$(FW_DIR)/$(FIRMWARE).bin $(FW_DIR)/$(FIRMWARE).dfu
+else
 	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OMV_DIR)/stm32fxxx.ld.S > $(BUILD)/stm32fxxx.lds
 	$(CC) $(LDFLAGS) $(FIRM_OBJ) -o $(FW_DIR)/$(FIRMWARE).elf -lgcc
 	$(OBJCOPY) -Obinary $(FW_DIR)/$(FIRMWARE).elf $(FW_DIR)/$(FIRMWARE).bin
 	$(PYTHON) $(MKDFU) -b $(MAIN_APP_ADDR):$(FW_DIR)/$(FIRMWARE).bin $(FW_DIR)/$(FIRMWARE).dfu
+endif
+
 
 # This target generates the bootloader. The bootloader binary is generated twice,
 # once without padding, to generate the bootloader.dfu file, and once with padding
 # up to the main fw image (MAIN_APP_ADDR), to generate a contiguous firmware.bin image.
 $(BOOTLOADER): FIRMWARE_OBJS BOOTLOADER_OBJS
+ifeq ($(TARGET), OPENMVRT_SEEED)
+else
 	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(BOOTLDR_DIR)/stm32fxxx.ld.S > $(BUILD)/$(BOOTLDR_DIR)/stm32fxxx.lds
 	$(CC) $(BOOTLDR_LDFLAGS) $(BOOT_OBJ) -o $(FW_DIR)/$(BOOTLOADER).elf
 	$(OBJCOPY) -Obinary $(FW_DIR)/$(BOOTLOADER).elf $(FW_DIR)/$(BOOTLOADER).bin
 	$(PYTHON) $(MKDFU) -b 0x08000000:$(FW_DIR)/$(BOOTLOADER).bin $(FW_DIR)/$(BOOTLOADER).dfu
 	$(OBJCOPY) -Obinary --pad-to=$(MAIN_APP_ADDR) --gap-fill=0xFF $(FW_DIR)/$(BOOTLOADER).elf $(FW_DIR)/$(BOOTLOADER).bin
+endif
 
 # This target generates the UVC firmware.
 $(UVC): FIRMWARE_OBJS UVC_OBJS
+ifeq ($(TARGET), OPENMVRT_SEEED)
+else
 	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(UVC_DIR)/stm32fxxx.ld.S > $(BUILD)/$(UVC_DIR)/stm32fxxx.lds
 	$(CC) $(UVC_LDFLAGS) $(UVC_OBJ) -o $(FW_DIR)/$(UVC).elf
 	$(OBJCOPY) -Obinary $(FW_DIR)/$(UVC).elf $(FW_DIR)/$(UVC).bin
 	$(PYTHON) $(MKDFU) -b $(MAIN_APP_ADDR):$(FW_DIR)/$(UVC).bin $(FW_DIR)/$(UVC).dfu
+endif
 
 # This target generates a combined bootloader+main firmware image.
 $(OPENMV): $(BOOTLOADER) $(UVC) $(FIRMWARE) | $(BUILD)
+ifeq ($(TARGET), OPENMVRT_SEEED)
+else
 	$(CAT) $(FW_DIR)/$(BOOTLOADER).bin $(FW_DIR)/$(FIRMWARE).bin > $(FW_DIR)/$(OPENMV).bin
 	$(PYTHON) $(MKDFU) -b 0x08000000:$(FW_DIR)/$(BOOTLOADER).bin -b $(MAIN_APP_ADDR):$(FW_DIR)/$(FIRMWARE).bin $(FW_DIR)/$(OPENMV).dfu
 	$(SIZE) $(FW_DIR)/$(BOOTLOADER).elf
 	$(SIZE) $(FW_DIR)/$(FIRMWARE).elf
+endif
 
 size:
 	$(SIZE) --format=SysV $(FW_DIR)/$(BOOTLOADER).elf

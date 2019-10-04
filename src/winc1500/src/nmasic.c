@@ -39,7 +39,7 @@
  *
  */
 
-#include STM32_HAL_H
+//#include STM32_HAL_H
 #include "common/include/nm_common.h"
 #include "driver/include/nmbus.h"
 #include "bsp/include/nm_bsp.h"

@@ -14,6 +14,10 @@ extern char _fballoc;
 static char *pointer = &_fballoc;
 static int marks = 0;
 
+#ifndef __weak
+  #define __weak   __attribute__((weak))
+#endif /* __weak */
+
 __weak NORETURN void fb_alloc_fail()
 {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError,
