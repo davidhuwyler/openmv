@@ -101,10 +101,18 @@ NXP_CFLAGS += -I. -Iinclude
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/drivers
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/utilities
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/CMSIS
+//NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/CMSIS
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/uart
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/phy
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/include
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/include
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/class
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/ehci
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/khci
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/osa
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/sdmmc
 
 MP_CFLAGS += -I$(BUILD)/$(MICROPY_DIR)/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/
@@ -113,6 +121,8 @@ MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/py/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/mp-readline
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/ports/imxrt/usb_misc
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/ports/imxrt/flegftl
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)
 #MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/core/inc/
 #MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/class/inc/
@@ -161,6 +171,7 @@ MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/core/inc/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/class/inc/
+
 MP_CFLAGS += -I$(MP_BOARD_CONFIG_DIR)
 
 OMV_CFLAGS += -I$(TOP_DIR)/$(OMV_DIR)/
@@ -188,7 +199,7 @@ ifeq ($(TARGET), OPENMVRT_SEEED)
 # Linker Flags
 LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
           -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
-          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld
+          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld.S
 
 # Linker Flags
 BOOTLDR_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
@@ -231,13 +242,24 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(CMSIS_DIR)/src/nn/SoftmaxFunctions/*.o)
 
 ifeq ($(TARGET), OPENMVRT_SEEED)
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(N)/ports/imxrt/boards/$(TARGET)/
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)*.o)
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/drivers*.o)
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities*.o)
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities/io*.o)
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities/log*.o)
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/utilities/str*.o)
-FIRM_OBJ += $(wildcard $(BUILD)/$(NXPHAL_DIR)/middleware/sdkusb/phy*.o)
+#FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/drivers/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/CMSIS/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/utilities/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/utilities/io/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/utilities/log/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/utilities/str/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/phy/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/include/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/include/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/class/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/ehci/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/khci/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/osa/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/port_usdhc_irq/*.o)
+
 else
 FIRM_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
 endif
@@ -443,9 +465,52 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/py/*.o)
 #------------- MicroPy Objects ----------------#
 ifeq ($(TARGET), OPENMVRT_SEEED)
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
+	adc.o \
+	bufhelper.o \
+	dcmc.o \
+	hal_wrapper.o			\
+	systick.o               \
+	servo.o \
+	fatfs_port.o \
+	flash_pgm.o \
+	flash_hyper.o \
+	gccollect.o             \
+	gchelper.o              \
+	mphalport.o 			\
+	modmachine.o \
+	modpyb.o \
+	modmcu.o \
+	moduos.o \
+	modnetwork.o \
+	modusocket.o \
+	modutime.o \
+	pendsv.o \
+	uart.o \
+	usb_app.o \
+	usbd_msc_storage.o \
+	usrsw.o \
+	isr.o \
+	irq.o \
+	uniqueID.o \
+	rpm.o \
+	rng.o \
+	rtc.o \
+	srpm.o \
+	tmr.o \
+	qtimer.o \
+	led.o \
+	storage.o \
+	sdcard.o \
+	help.o 					\
 	pin.o                   \
+	pin_defs_mcu.o \
 	pin_named_pins.o        \
+	pybstdio.o \
+	pwm.o \
+	flegftl/flegftl.o \
 	pins_$(TARGET).o        \
+	boards/$(TARGET)/board.o \
+	boards/$(TARGET)/clock_config.o \
 	)
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
@@ -514,12 +579,12 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/,\
 	utils/pyexec.o          \
 	utils/printf.o          \
 	utils/interrupt_char.o  \
-	utils/sys_stdio_mphal.o \
 	libc/string0.o          \
 	netutils/netutils.o     \
 	timeutils/timeutils.o   \
 	embed/abort_.o             \
 	)
+#  Excluded 	utils/sys_stdio_mphal.o  because it defines functions of pybstdio
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/,\
 	utils/pyexec.o          \
@@ -570,7 +635,13 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/lib/mp-readline/,\
 	)
 
 ifeq ($(TARGET), OPENMVRT_SEEED)
-
+FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/usb_misc/, \
+	usb_device_descriptor.o \
+	usb_device_msc.o \
+	composite.o \
+	ring_buffer.o \
+	virtual_com.o \
+	)
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/usbdev/, \
 	core/src/usbd_core.o                \
@@ -775,7 +846,7 @@ endif
 $(FIRMWARE): FIRMWARE_OBJS
 ifeq ($(TARGET), OPENMVRT_SEEED)
 	$(ECHO) "Create the Firmware"
-	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld > $(BUILD)/MIMXRT1052.lds
+	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld.S > $(BUILD)/MIMXRT1052.lds
 	$(ECHO) "Make the elf file..."
 	$(CC) $(LDFLAGS) $(FIRM_OBJ) -o $(FW_DIR)/$(FIRMWARE).elf -lgcc
 	$(ECHO) "Make the bin file..."

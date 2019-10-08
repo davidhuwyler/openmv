@@ -530,10 +530,15 @@ FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 }
 #endif
 
+#ifdef OPENMVRT_SEEED
+static char *stack_top;
+static char heap[2048];
+#endif
+
 int main(void)
 {
 #ifdef OPENMVRT_SEEED
-#if 0
+
     int stack_dummy;
     stack_top = (char*)&stack_dummy;
 
@@ -561,7 +566,6 @@ int main(void)
     mp_deinit();
     return 0;
 
-#endif //0
 
 
 #else

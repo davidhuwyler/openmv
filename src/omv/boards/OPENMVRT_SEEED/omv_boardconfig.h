@@ -97,7 +97,7 @@
 // Linker script constants (see the linker script template stm32fxxx.ld.S).
 // Note: fb_alloc is a stack-based, dynamically allocated memory on FB.
 // The maximum available fb_alloc memory = FB_ALLOC_SIZE + FB_SIZE - (w*h*bpp).
-#define OMV_FB_MEMORY       SRAM1   // Framebuffer, fb_alloc
+#define OMV_FB_MEMORY       RAM4   // Framebuffer, fb_alloc
 #define OMV_MAIN_MEMORY     CCM     // data, bss, stack and heap
 #define OMV_DMA_MEMORY      CCM     // Misc DMA buffers
 #define OMV_STACK_SIZE      (8 * 1024)
@@ -107,8 +107,8 @@
 #define OMV_FB_ALLOC_SIZE   (323 * 1024)   // minimum fb alloc size
 #define OMV_JPEG_BUF_SIZE   (48 * 1024) // IDE JPEG buffer (header + data).
 #else
-#define OMV_FB_SIZE         (301 * 1024)  // FB memory: header + VGA/GS image
-#define OMV_FB_ALLOC_SIZE   (83 * 1024)   // minimum fb alloc size
+#define OMV_FB_SIZE         (400k)  // FB memory: header + VGA/GS image
+#define OMV_FB_ALLOC_SIZE   (96k)   // minimum fb alloc size
 #define OMV_JPEG_BUF_SIZE   (32 * 1024) // IDE JPEG buffer (header + data).
 #endif
 // RAW buffer size
