@@ -102,8 +102,9 @@ NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/drivers
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/utilities
 //NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/CMSIS
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/uart
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager/usb_cdc_adapter
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/phy
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/include
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/include
@@ -121,8 +122,8 @@ MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/py/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/mp-readline
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/ports/imxrt/usb_misc
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/ports/imxrt/flegftl
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/flegftl
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/usb_misc
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)
 #MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/core/inc/
 #MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/class/inc/
@@ -256,9 +257,12 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/class/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/ehci/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/khci/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/component/serial_manager/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/component/uart/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/osa/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/port_usdhc_irq/*.o)
+#FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/flegftl/*.o)
 
 else
 FIRM_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
@@ -477,6 +481,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	gccollect.o             \
 	gchelper.o              \
 	mphalport.o 			\
+	mpthreadport.o \
 	modmachine.o \
 	modpyb.o \
 	modmcu.o \
@@ -506,12 +511,17 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	pin_defs_mcu.o \
 	pin_named_pins.o        \
 	pybstdio.o \
+	pybthread.o \
 	pwm.o \
 	flegftl/flegftl.o \
 	pins_$(TARGET).o        \
 	boards/$(TARGET)/board.o \
+	boards/$(TARGET)/pin_mux.o \
 	boards/$(TARGET)/clock_config.o \
 	)
+	
+	# 	usbdbg.o  TODO Dave: include after sensor works... Uses Sensor...
+	
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	stm32_it.o              \
