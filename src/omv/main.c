@@ -13,9 +13,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include "hal_wrapper.h"
 #include "mpconfig.h"
 #include "systick.h"
-//#include "pendsv.h"
+#include "pendsv.h"
 #include "qstr.h"
 #include "nlr.h"
 #include "lexer.h"
@@ -30,36 +31,39 @@
 #include "gccollect.h"
 #include "readline.h"
 
+//Dave Added:
+#include "usb_app.h"
+#include "virtual_com.h"
 
 #include "repl.h"
 
 #include "mperrno.h"
 #include "lib/utils/pyexec.h"
 
-//#include "timer.h"
+#include "timer.h"
 #include "pin.h"
-//#include "usb.h"
-//#include "rtc.h"
-//#include "storage.h"
-//#include "sdcard.h"
+#include "usb.h"
+#include "rtc.h"
+#include "storage.h"
+#include "sdcard.h"
 #include "ff.h"
 //#include "modnetwork.h"
-//#include "modmachine.h"
+#include "modmachine.h"
 
 #include "extmod/vfs.h"
 #include "extmod/vfs_fat.h"
 #include "lib/utils/pyexec.h"
 
-//#include "irq.h"
-//#include "rng.h"
-//#include "led.h"
-//#include "spi.h"
-//#include "i2c.h"
-//#include "uart.h"
-//#include "dac.h"
-//#include "can.h"
+#include "irq.h"
+#include "rng.h"
+#include "led.h"
+#include "spi.h"
+#include "i2c.h"
+#include "uart.h"
+#include "dac.h"
+#include "can.h"
 #include "extint.h"
-//#include "servo.h"
+#include "servo.h"
 
 //#include "sensor.h"
 //#include "usbdbg.h"
@@ -531,21 +535,91 @@ FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 #endif
 
 #ifdef OPENMVRT_SEEED
-static char *stack_top;
-static char heap[2048];
+
+extern uint32_t* __StackTop, __StackSize, _heap_start, _heap_end;
+
+
+HAL_StatusTypeDef HAL_Init(void)
+{
+    BOARD_ConfigMPU();
+    BOARD_InitPins();
+    BOARD_BootClockRUN();
+    BOARD_InitDebugConsole();
+	PRINTF("Debug console inited!\r\n");
+	/* Set Interrupt Group Priority */
+	NVIC_SetPriorityGrouping(3);
+
+	/* Use systick as time base source and configure 1ms tick (default clock after Reset is HSI) */
+	HAL_InitTick(IRQ_PRI_SYSTICK);
+
+	#if 0 // #ifdef XIP_EXTERNAL_FLASH
+	uint32_t wait;
+	for (wait = HAL_GetTick(); wait < 1501; wait = HAL_GetTick()) {
+		if (wait % 250 == 0) {
+			PRINTF("%d\r\n", (1501 - wait) / 250);
+		}
+		HAL_WFI();
+	}
+	#endif
+
+	return HAL_OK;
+}
+
 #endif
 
 int main(void)
 {
 #ifdef OPENMVRT_SEEED
+    HAL_Init();
 
-    int stack_dummy;
-    stack_top = (char*)&stack_dummy;
+    // Basic sub-system init
+    led_init();
+    pendsv_init();
 
-    #if MICROPY_ENABLE_GC
-    gc_init(heap, heap + sizeof(heap));
-    #endif
-    mp_init();
+    bool first_soft_reset = true;
+    machine_init();
+
+    // Python threading init
+#if MICROPY_PY_THREAD
+     mp_thread_init();
+#endif
+     // Stack limit should be less than real stack size, so we have a
+     // chance to recover from limit hit. (Limit is measured in bytes)
+     mp_stack_set_top(&__StackTop);
+     mp_stack_set_limit(&__StackSize);
+
+     // GC init
+#if MICROPY_ENABLE_GC
+     gc_init(&_heap_start,&_heap_end);
+#endif
+     //gc_init(&_heap_start, &_heap_end);
+
+     // Micro Python init
+     mp_init();
+     mp_obj_list_init(mp_sys_path, 0);
+     mp_obj_list_init(mp_sys_argv, 0);
+
+     readline_init0();
+     pin_init0();
+     uart_init0();
+     pyb_usb_init0();
+     //usbdbg_init();
+
+
+
+	#if defined(USE_DEVICE_MODE)
+    // init USB device to default setting if it was not already configured
+    if (first_soft_reset) {
+	    if (!(pyb_usb_flags & PYB_USB_FLAG_USB_MODE_CALLED)) {
+	        pyb_usb_dev_init(USBD_VID, USBD_PID_CDC_MSC, USBD_MODE_CDC_MSC, NULL);
+			// NVIC_SetPriority(USB_OTG1_IRQn, 0);
+	    }
+    }
+	#endif
+
+
+     VCOM_Open();
+
     #if MICROPY_ENABLE_COMPILER
     #if MICROPY_REPL_EVENT_DRIVEN
     pyexec_event_repl_init();
