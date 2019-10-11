@@ -1,4 +1,12 @@
-# Sources
+# This file is part of the OpenMV project.
+#
+# Copyright (c) 2013-2019 Ibrahim Abdelkader <iabdalkader@openmv.io>
+# Copyright (c) 2013-2019 Kwabena W. Agyeman <kwagyeman@openmv.io>
+#
+# This work is licensed under the MIT license, see the file LICENSE for details.
+#
+# OMV Makefile
+
 SRCS += $(addprefix ,   \
 	main.c              \
 	xalloc.c            \
@@ -8,21 +16,21 @@ SRCS += $(addprefix ,   \
 	ini.c               \
 	framebuffer.c       \
 	array.c             \
-   )
-#	usbdbg.c            \
-	cambus.c            \
+	usbdbg.c            \
 	wifidbg.c           \
-	sensor.c            \
+	cambus.c            \
 	ov9650.c            \
 	ov2640.c            \
 	ov7725.c            \
 	ov5640.c            \
 	mt9v034.c           \
 	lepton.c            \
+	sensor.c            \
 	stm32fxxx_hal_msp.c \
 	soft_i2c.c          \
 	mutex.c             \
 	trace.c             \
+   )
 
 SRCS += $(addprefix img/,   \
 	binary.c                \
@@ -66,6 +74,7 @@ SRCS += $(addprefix img/,   \
 	phasecorrelation.c      \
 	shadow_removal.c        \
 	font.c                  \
+	jpeg.c                  \
 	lbp.c                   \
 	eye.c                   \
 	hough.c                 \
@@ -76,7 +85,6 @@ SRCS += $(addprefix img/,   \
 	hog.c                   \
 	selective_search.c      \
    )
-#	jpeg.c                  \
 
 SRCS += $(addprefix nn/,    \
 	nn.c                    \
@@ -86,10 +94,9 @@ SRCS += $(addprefix nn/,    \
 SRCS += $(addprefix py/, \
 	py_helper.c             \
 	py_omv.c                \
-	py_time.c               \
-   )
-#	py_sensor.c             \
+	py_sensor.c             \
 	py_image.c              \
+	py_time.c               \
 	py_lcd.c                \
 	py_tv.c                 \
 	py_fir.c                \
@@ -98,7 +105,8 @@ SRCS += $(addprefix py/, \
 	py_winc.c               \
 	py_cpufreq.c            \
 	py_nn.c                 \
-	
+   )
+
 OBJS = $(addprefix $(BUILD)/, $(SRCS:.c=.o))
 OBJ_DIRS = $(sort $(dir $(OBJS)))
 

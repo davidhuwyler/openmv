@@ -1,14 +1,17 @@
 /*
  * This file is part of the OpenMV project.
- * Copyright (c) 2013/2014 Ibrahim Abdelkader <i.abdalkader@gmail.com>
+ *
+ * Copyright (c) 2013-2019 Ibrahim Abdelkader <iabdalkader@openmv.io>
+ * Copyright (c) 2013-2019 Kwabena W. Agyeman <kwagyeman@openmv.io>
+ *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
  * SCCB (I2C like) driver.
- *
  */
 #include <stdbool.h>
+#include <stddef.h>
 #include STM32_HAL_H
-#include <systick.h>
+#include "systick.h"
 #include "omv_boardconfig.h"
 #include "cambus.h"
 #define I2C_FREQUENCY   (100000)

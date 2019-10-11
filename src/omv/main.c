@@ -1,93 +1,13 @@
 /*
  * This file is part of the OpenMV project.
- * Copyright (c) 2013/2014 Ibrahim Abdelkader <i.abdalkader@gmail.com>
+ *
+ * Copyright (c) 2013-2019 Ibrahim Abdelkader <iabdalkader@openmv.io>
+ * Copyright (c) 2013-2019 Kwabena W. Agyeman <kwagyeman@openmv.io>
+ *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
  * main function.
- *
  */
-
-//#define OPENMVRT_SEEED //--> Is already defined if Target in Makefile: TARGET ?= OPENMVRT_SEEED
-
-#ifdef OPENMVRT_SEEED
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include "hal_wrapper.h"
-#include "mpconfig.h"
-#include "systick.h"
-#include "pendsv.h"
-#include "qstr.h"
-#include "nlr.h"
-#include "lexer.h"
-#include "parse.h"
-#include "compile.h"
-#include "runtime.h"
-#include "obj.h"
-#include "objmodule.h"
-#include "objstr.h"
-#include "gc.h"
-#include "stackctrl.h"
-#include "gccollect.h"
-#include "readline.h"
-
-//Dave Added:
-#include "usb_app.h"
-#include "virtual_com.h"
-
-#include "repl.h"
-
-#include "mperrno.h"
-#include "lib/utils/pyexec.h"
-
-#include "timer.h"
-#include "pin.h"
-#include "usb.h"
-#include "rtc.h"
-#include "storage.h"
-#include "sdcard.h"
-#include "ff.h"
-//#include "modnetwork.h"
-#include "modmachine.h"
-
-#include "extmod/vfs.h"
-#include "extmod/vfs_fat.h"
-#include "lib/utils/pyexec.h"
-
-#include "irq.h"
-#include "rng.h"
-#include "led.h"
-#include "spi.h"
-#include "i2c.h"
-#include "uart.h"
-#include "dac.h"
-#include "can.h"
-#include "extint.h"
-#include "servo.h"
-
-//#include "sensor.h"
-//#include "usbdbg.h"
-//#include "wifidbg.h"
-//#include "sdram.h"
-#include "fb_alloc.h"
-#include "ff_wrapper.h"
-
-//#include "usbd_core.h"
-//#include "usbd_desc.h"
-//#include "usbd_cdc_msc_hid.h"
-//#include "usbd_cdc_interface.h"
-//#include "usbd_msc_storage.h"
-
-#include "py_sensor.h"
-#include "py_image.h"
-#include "py_lcd.h"
-#include "py_fir.h"
-#include "py_tv.h"
-
-#include "framebuffer.h"
-
-#include "ini.h"
-#else
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -155,20 +75,12 @@
 #include "framebuffer.h"
 
 #include "ini.h"
-#endif
 
-#ifdef OPENMVRT_SEEED
-fs_user_mount_t fs_user_mount_flash;
-#else
 int errno;
 extern char _vfs_buf;
 static fs_user_mount_t *vfs_fat = (fs_user_mount_t *) &_vfs_buf;
 pyb_thread_t pyb_thread_main;
-#endif
 
-#ifdef OPENMVRT_SEEED
-
-#else
 static const char fresh_main_py[] =
 "# main.py -- put your code here!\n"
 "import pyb, time\n"
@@ -212,7 +124,7 @@ static const char fresh_selftest_py[] =
 "    # Test VBAT\n"
 "    vbat = adc.read_core_vbat()\n"
 "    vbat_diff = abs(vbat-3.3)\n"
-"    if (vbat_diff > 0.1):\n"
+"    if (vbat_diff > 0.15):\n"
 "        raise Exception('INTERNAL ADC TEST FAILED VBAT=%fv'%vbat)\n"
 "\n"
 "    # Test VREF\n"
@@ -279,15 +191,8 @@ static const char fresh_selftest_py[] =
 "\n"
 ;
 #endif
-#endif
-
-
 
 void flash_error(int n) {
-
-#ifdef OPENMVRT_SEEED
-
-#else
     led_state(LED_RED, 0);
     led_state(LED_GREEN, 0);
     led_state(LED_BLUE, 0);
@@ -298,17 +203,9 @@ void flash_error(int n) {
         HAL_Delay(100);
     }
     led_state(LED_RED, 0);
-#endif
-
-
 }
 
-
-
 void NORETURN __fatal_error(const char *msg) {
-#ifdef OPENMVRT_SEEED
-	for (;;) {}
-#else
     FIL fp;
     if (f_open(&vfs_fat->fatfs, &fp, "ERROR.LOG",
                FA_WRITE|FA_CREATE_ALWAYS) == FR_OK) {
@@ -325,8 +222,6 @@ void NORETURN __fatal_error(const char *msg) {
         for (volatile uint delay = 0; delay < 500000; delay++) {
         }
     }
-#endif
-
 }
 
 void nlr_jump_fail(void *val) {
@@ -343,27 +238,17 @@ void __attribute__((weak))
 }
 #endif
 
-
-
-
 void f_touch(const char *path)
 {
-#ifdef OPENMVRT_SEEED
-
-#else
     FIL fp;
     if (f_stat(&vfs_fat->fatfs, path, NULL) != FR_OK) {
         f_open(&vfs_fat->fatfs, &fp, path, FA_WRITE | FA_CREATE_ALWAYS);
         f_close(&fp);
     }
-#endif
 }
 
 void make_flash_fs()
 {
-#ifdef OPENMVRT_SEEED
-
-#else
     FIL fp;
     UINT n;
 
@@ -393,8 +278,6 @@ void make_flash_fs()
     f_close(&fp);
 
     led_state(LED_RED, 0);
-#endif
-
 }
 
 #ifdef STACK_PROTECTOR
@@ -409,21 +292,12 @@ void NORETURN __stack_chk_fail(void)
 #endif
 
 typedef struct openmv_config {
-#ifdef OPENMVRT_SEEED
-
-#else
     bool wifidbg;
     wifidbg_config_t wifidbg_config;
-#endif
-
 } openmv_config_t;
 
 int ini_handler_callback(void *user, const char *section, const char *name, const char *value)
 {
-
-#ifdef OPENMVRT_SEEED
-
-#else
     openmv_config_t *openmv_config = (openmv_config_t *) user;
 
     #define MATCH(s, n) ((strcmp(section, (s)) == 0) && (strcmp(name, (n)) == 0))
@@ -463,23 +337,14 @@ int ini_handler_callback(void *user, const char *section, const char *name, cons
     } else {
         return 0;
     }
-#endif
 
     return 1;
 
     #undef MATCH
 }
 
-#ifdef OPENMVRT_SEEED
-
-#else
 FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 {
-
-	FRESULT res = FR_OK;
-	return res;
-
-
     nlr_buf_t nlr;
     bool interrupted = false;
     FRESULT f_res = f_stat(&vfs_fat->fatfs, path, NULL);
@@ -532,389 +397,15 @@ FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 
     return f_res;
 }
-#endif
-
-#ifdef OPENMVRT_SEEED
-
-extern uint32_t __StackTop; //TODO Dave: Why once * and once not?
-extern uint32_t __StackSize;
-extern uint32_t _heap_start;
-extern uint32_t _heap_end;
-
-
-HAL_StatusTypeDef HAL_Init(void)
-{
-    BOARD_ConfigMPU();
-    BOARD_InitPins();
-    BOARD_BootClockRUN();
-    BOARD_InitDebugConsole();
-	PRINTF("Debug console inited!\r\n");
-	/* Set Interrupt Group Priority */
-	NVIC_SetPriorityGrouping(3);
-
-	/* Use systick as time base source and configure 1ms tick (default clock after Reset is HSI) */
-	HAL_InitTick(IRQ_PRI_SYSTICK);
-
-	#if 0 // #ifdef XIP_EXTERNAL_FLASH
-	uint32_t wait;
-	for (wait = HAL_GetTick(); wait < 1501; wait = HAL_GetTick()) {
-		if (wait % 250 == 0) {
-			PRINTF("%d\r\n", (1501 - wait) / 250);
-		}
-		HAL_WFI();
-	}
-	#endif
-
-	return HAL_OK;
-}
-
-#if MICROPY_HW_HAS_SDCARD
-STATIC bool init_sdcard_fs(bool first_soft_reset) {
-    bool first_part = true;
-    for (int part_num = 1; part_num <= 4; ++part_num) {
-        // create vfs object
-        fs_user_mount_t *vfs_fat = m_new_obj_maybe(fs_user_mount_t);
-        mp_vfs_mount_t *vfs = m_new_obj_maybe(mp_vfs_mount_t);
-        if (vfs == NULL || vfs_fat == NULL) {
-            break;
-        }
-        vfs_fat->flags = FSUSER_FREE_OBJ;
-        sdcard_init_vfs(vfs_fat, part_num);
-
-        // try to mount the partition
-        FRESULT res = f_mount(&vfs_fat->fatfs);
-
-        if (res != FR_OK) {
-            // couldn't mount
-
-            m_del_obj(fs_user_mount_t, vfs_fat);
-            m_del_obj(mp_vfs_mount_t, vfs);
-        } else {
-            // mounted via FatFs, now mount the SD partition in the VFS
-            if (first_part) {
-                // the first available partition is traditionally called "sd" for simplicity
-                vfs->str = "/";
-                vfs->len = 1;
-				// for openMV's root dir, set to SD card
-				MP_STATE_PORT(vfs_cur) = vfs;
-            } else {
-                // subsequent partitions are numbered by their index in the partition table
-                if (part_num == 2) {
-                    vfs->str = "/sd2";
-                } else if (part_num == 2) {
-                    vfs->str = "/sd3";
-                } else {
-                    vfs->str = "/sd4";
-                }
-                vfs->len = 4;
-            }
-            vfs->obj = MP_OBJ_FROM_PTR(vfs_fat);
-            vfs->next = NULL;
-            for (mp_vfs_mount_t **m = &MP_STATE_VM(vfs_mount_table);; m = &(*m)->next) {
-                if (*m == NULL) {
-                    *m = vfs;
-                    break;
-                }
-            }
-
-            if (first_soft_reset) {
-                // use SD card as medium for the USB MSD
-                #if defined(USE_DEVICE_MODE)
-                pyb_usb_storage_medium = PYB_USB_STORAGE_MEDIUM_SDCARD;
-                #endif
-            }
-
-            #if defined(USE_DEVICE_MODE)
-            // only use SD card as current directory if that's what the USB medium is
-            if (pyb_usb_storage_medium == PYB_USB_STORAGE_MEDIUM_SDCARD)
-            #endif
-            {
-                if (first_part) {
-                    // use SD card as current directory
-                    MP_STATE_PORT(vfs_cur) = vfs;
-                }
-            }
-            first_part = false;
-        }
-    }
-
-    if (first_part) {
-        printf("PYB: can't mount SD card\n");
-        return false;
-    } else {
-        return true;
-    }
-}
-#endif
-
-
-#endif
 
 int main(void)
 {
-#ifdef OPENMVRT_SEEED
-    HAL_Init();
-    // Basic sub-system init
-    led_init();
-    pendsv_init();
-
-    bool first_soft_reset = true;
-    machine_init();
-
-    // more sub-system init
-#if MICROPY_HW_HAS_SDCARD
-    if (first_soft_reset) {
-        sdcard_init();
-    }
-#endif
-
-
-    // Python threading init
-#if MICROPY_PY_THREAD
-     mp_thread_init();
-#endif
-     // Stack limit should be less than real stack size, so we have a
-     // chance to recover from limit hit. (Limit is measured in bytes)
-     mp_stack_set_top(&__StackTop);
-     mp_stack_set_limit(__StackSize);
-
-     // GC init
-#if MICROPY_ENABLE_GC
-     gc_init(&_heap_start,&_heap_end);
-#endif
-     //gc_init(&_heap_start, &_heap_end);
-
-     // Micro Python init
-     mp_init();
-     mp_obj_list_init(mp_sys_path, 0);
-     mp_obj_list_init(mp_sys_argv, 0);
-
-     readline_init0();
-     pin_init0();
-     uart_init0();
-     pyb_usb_init0();
-     //usbdbg_init();
-
-
-
-     // Initialise the local flash filesystem.
-     // Create it if needed, mount in on /flash, and set it as current dir.
- 	bool mounted_flash;
- 	#if !defined(XIP_EXTERNAL_FLASH) && defined(EVK1050_60_HYPER)
-     mounted_flash = init_flash_fs(reset_mode);
- 	#else
- 	mounted_flash = 0;
- 	#endif
-
-
-    bool mounted_sdcard = false;
-#if MICROPY_HW_HAS_SDCARD
-    // if an SD card is present then mount it on /sd/
-    if (sdcard_is_present()) {
-        // if there is a file in the flash called "SKIPSD", then we don't mount the SD card
-        if (!mounted_flash || f_stat(&fs_user_mount_flash.fatfs, "/SKIPSD", NULL) != FR_OK) {
-			int retry = 16;
-			while (retry--) {
-				mounted_sdcard = init_sdcard_fs(first_soft_reset);
-				if (mounted_sdcard)
-					break;
-				else
-				{
-					uint32_t t0;
-					PRINTF("can't mount SD card FS!\r\n");
-					t0 = HAL_GetTick();
-					while (HAL_GetTick() - t0 < 250) {}
-				}
-			}
-        }
-    } else {
-
-	}
-#endif
-
-    // set sys.path based on mounted filesystems (/sd is first so it can override /flash)
-#if 0 //TODO Dave: QSTRs are not generated from OMV Main.c...
-    if (mounted_sdcard) {
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_sd));
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_sd_slash_lib));
-    }
-    if (mounted_flash) {
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_flash));
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_flash_slash_lib));
-    }
-#endif
-
-
-    // reset config variables; they should be set by boot.py
-    MP_STATE_PORT(pyb_config_main) = MP_OBJ_NULL;
-
-
-
-	#if defined(USE_DEVICE_MODE)
-    // init USB device to default setting if it was not already configured
-    if (first_soft_reset) {
-	    if (!(pyb_usb_flags & PYB_USB_FLAG_USB_MODE_CALLED)) {
-	        pyb_usb_dev_init(USBD_VID, USBD_PID_CDC_MSC, USBD_MODE_CDC_MSC, NULL);
-			// NVIC_SetPriority(USB_OTG1_IRQn, 0);
-	    }
-    }
-	#endif
-
-
-     VCOM_Open();
-
-
-
-
-
-
-
-#if 0 //Dave Working repl
-
-    #if MICROPY_ENABLE_COMPILER
-    #if MICROPY_REPL_EVENT_DRIVEN
-    pyexec_event_repl_init();
-    for (;;) {
-        int c = mp_hal_stdin_rx_chr();
-        if (pyexec_event_repl_process_char(c)) {
-            break;
-        }
-    }
-    #else
-    pyexec_friendly_repl();
+    #if MICROPY_HW_SDRAM_SIZE
+    bool sdram_ok = false;
+    #if MICROPY_HW_SDRAM_STARTUP_TEST
+    bool sdram_pass = false;
     #endif
-    //do_str("print('hello world!', list(x+1 for x in range(10)), end='eol\\n')", MP_PARSE_SINGLE_INPUT);
-    //do_str("for i in range(10):\r\n  print(i)", MP_PARSE_FILE_INPUT);
-    #else
-    pyexec_frozen_module("frozentest.py");
     #endif
-    mp_deinit();
-
-#endif
-
-#if 1 //new sd try
-
-	int ret = 0;
-	PRINTF("Enter OpenMV main\r\n");
-	// SCnSCB->ACTLR |= SCnSCB_ACTLR_DISDEFWBUF_Msk;
-/*
-	extint_init0();
-    timer_init0();
-    can_init0();
-    rng_init0();
-    i2c_init0();
-    spi_init0();
-    uart_init0();
-    MP_STATE_PORT(pyb_stdio_uart) = NULL; // need to zero
-    dac_init();
-    pyb_usb_init0();
-    sensor_init0();
-*/
-    file_buffer_init0();
-
- MainLoop:
-    // Run boot script(s)
-	if (!usbdbg_script_ready()) {
-		if (first_soft_reset) {
-			first_soft_reset = 0;
-			exec_boot_script("/selftest.py", true, false);
-			apply_settings("/openmv.config");
-			usbdbg_set_irq_enabled(true);
-			// rocky: pyb's main uses different method to access file system from omv
-			mp_import_stat_t stat = mp_import_stat("main.py");
-			if (stat == MP_IMPORT_STAT_FILE) {
-				nlr_buf_t nlr;
-				if (nlr_push(&nlr) == 0) {
-					int ret = pyexec_file("main.py");
-					if (ret & PYEXEC_FORCED_EXIT) {
-						ret = 1;
-					}
-					if (!ret) {
-						flash_error(3);
-					}
-					nlr_pop();
-				}
-				else {
-					// 2019.03.27 19:52 rocky: if main.py is interrupted by running another script,
-					// we have to do soft reset, otherwise fb alloc logic may fail and led to hard fault
-					// In this case, it makes user have to press start button twice to start the script in OpenMV IDE
-					goto cleanup;
-				}
-			}
-			// exec_boot_script("/sd/main.py", false, true);
-		}
-	}
-
-    // If there's no script ready, just re-exec REPL
-    while (!usbdbg_script_ready()) {
-        nlr_buf_t nlr;
-
-        if (nlr_push(&nlr) == 0) {
-            // enable IDE interrupt
-            usbdbg_set_irq_enabled(true);
-
-            // run REPL
-            if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
-                if (pyexec_raw_repl() != 0) {
-                    break;
-                }
-            } else {
-                if (pyexec_friendly_repl() != 0) {
-					ret = 1;
-                    break;
-                }
-            }
-
-            nlr_pop();
-        }
-    }
-
-    if (usbdbg_script_ready()) {
-        nlr_buf_t nlr;
-		PRINTF("script ready!\r\n");
-        // execute the script
-        if (nlr_push(&nlr) == 0) {
-			// rocky: 2019.03.27 19:00 reset fb alloc memory for new script
-			#ifndef OMV_MPY_ONLY
-			fb_alloc_init0();
-			#endif
-#if 0
-			vstr_t *buf = usbdbg_get_script();
-			mp_obj_t code = pyexec_compile_str(buf);
-            // enable IDE interrupt
-            usbdbg_set_irq_enabled(true);
-            pyexec_exec_code(code);
-#else
-			usbdbg_set_irq_enabled(true);
-			pyexec_str(usbdbg_get_script());
-#endif
-            nlr_pop();
-        } else {
-            mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
-        }
-    }
-cleanup:
-	usbdbg_set_irq_enabled(true);
-    // Disable all other IRQs except Systick and Flash IRQs
-    // Note: FS IRQ is disable, since we're going for a soft-reset.
-    // __set_BASEPRI(IRQ_PRI_FLASH + 1);
-
-    // soft reset
-//    storage_flush();
-//    timer_deinit();
-//    uart_deinit();
-//    can_deinit();
-	ProfReset();
-
-
-#endif
-
-
-    return 0;
-
-
-
-#else
     int sensor_init_ret = 0;
     bool sdcard_mounted = false;
     bool first_soft_reset = true;
@@ -928,8 +419,14 @@ cleanup:
     //  - Configure the Flash prefetch, instruction and Data caches
     //  - Configure the Systick to generate an interrupt each 1 msec
     //  NOTE: The bootloader enables the CCM/DTCM memory.
-
     HAL_Init();
+
+    #if MICROPY_HW_SDRAM_SIZE
+    sdram_ok = sdram_init();
+    #if MICROPY_HW_SDRAM_STARTUP_TEST
+    sdram_pass = sdram_test(false);
+    #endif
+    #endif
 
     // Basic sub-system init
     led_init();
@@ -969,15 +466,10 @@ soft_reset:
     pin_init0();
     extint_init0();
     timer_init0();
-    #if MICROPY_HW_ENABLE_CAN
     can_init0();
-    #endif
     i2c_init0();
     spi_init0();
     uart_init0();
-    MP_STATE_PORT(pyb_stdio_uart) = NULL; // need to zero
-    dac_init();
-    pyb_usb_init0();
     sensor_init0();
     fb_alloc_init0();
     file_buffer_init0();
@@ -987,10 +479,13 @@ soft_reset:
     servo_init();
     usbdbg_init();
     sdcard_init();
+    rtc_init_start(false);
 
-    if (first_soft_reset) {
-        rtc_init_start(false);
-    }
+    pyb_usb_init0();
+    MP_STATE_PORT(pyb_stdio_uart) = NULL;
+    // Activate USB_VCP(0) on dupterm slot 1 for the REPL
+    MP_STATE_VM(dupterm_objs[1]) = MP_OBJ_FROM_PTR(&pyb_usb_vcp_obj);
+    usb_vcp_attach_to_repl(&pyb_usb_vcp_obj, true);
 
     // Initialize the sensor and check the result after
     // mounting the file-system to log errors (if any).
@@ -1082,6 +577,22 @@ soft_reset:
         pyb_usb_dev_init(USBD_VID, USBD_PID_CDC_MSC, USBD_MODE_CDC_MSC, NULL);
     }
 
+    // report if SDRAM failed
+    #if MICROPY_HW_SDRAM_SIZE
+    if (first_soft_reset && (!sdram_ok)) {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "Failed to init sdram!");
+        __fatal_error(buf);
+    }
+    #if MICROPY_HW_SDRAM_STARTUP_TEST
+    if (first_soft_reset && (!sdram_pass)) {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "SDRAM failed testing!");
+        __fatal_error(buf);
+    }
+    #endif
+    #endif
+
     // check sensor init result
     if (first_soft_reset && sensor_init_ret != 0) {
         char buf[512];
@@ -1152,14 +663,12 @@ soft_reset:
     // soft reset
     storage_flush();
     timer_deinit();
-    uart_deinit();
+    uart_deinit_all();
     #if MICROPY_HW_ENABLE_CAN
-    can_deinit();
+    can_deinit_all();
     #endif
     pyb_thread_deinit();
 
     first_soft_reset = false;
     goto soft_reset;
-#endif
-
 }

@@ -709,7 +709,7 @@ soft_reset:
         //Wait a bit...
 		volatile uint32_t t1, t2;
 		t1 = HAL_GetTick();
-		t2 = t1 + 2000;
+		t2 = t1 + 200;
 		while (HAL_GetTick() < t2) {HAL_WFI();}
     }
 #endif
