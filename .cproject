@@ -50,6 +50,12 @@
                         </toolChain>
                         					
                     </folderInfo>
+                    					
+                    <folderInfo id="com.crt.advproject.toolchain.exe.debug.375992654.1886468212" name="/" resourcePath="src/micropython/ports/imxrt/mcusdk/video">
+                        						
+                        <toolChain id="com.crt.advproject.toolchain.exe.debug.957747240.375661743" name="NXP MCU Tools" superClass="com.crt.advproject.toolchain.exe.debug.957747240" unusedChildren=""/>
+                        					
+                    </folderInfo>
                     				
                 </configuration>
                 			

@@ -50,14 +50,16 @@ OMV_QSTR_DEFS = $(TOP_DIR)/$(OMV_DIR)/py/qstrdefsomv.h
 # Target
 TARGET ?= OPENMVRT_SEEED
 #TARGET ?= OPENMV4
-FW_DIR=$(TOP_DIR)/../firmware/$(TARGET)
-OMV_BOARD_CONFIG_DIR=$(TOP_DIR)/$(OMV_DIR)/boards/$(TARGET)/
 
 ifeq ($(TARGET), OPENMVRT_SEEED)
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)/
+OMV_DIR=omv_imxrt
 else
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/boards/$(TARGET)/
 endif
+
+FW_DIR=$(TOP_DIR)/../firmware/$(TARGET)
+OMV_BOARD_CONFIG_DIR=$(TOP_DIR)/$(OMV_DIR)/boards/$(TARGET)/
 
 # Debugging/Optimization
 ifeq ($(DEBUG), 1)
@@ -98,33 +100,34 @@ CFLAGS += -D$(TARGET) -DARM_MATH_CM7 -D__FPU_PRESENT=1
 CMSIS_CFLAGS += -I$(TOP_DIR)/$(CMSIS_DIR)/include/
 
 NXP_CFLAGS += -I. -Iinclude
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/drivers
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/utilities
-//NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/CMSIS
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/uart
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager/usb_cdc_adapter
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/phy
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/include
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/include
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/class
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/ehci
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/khci
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/osa
-NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/sdmmc
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/drivers/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/utilities/
+//NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/CMSIS/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/uart/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager/usb_cdc_adapter/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/component/serial_manager/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/phy/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/include/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/include/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/class/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/ehci/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/khci/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/osa/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/sdmmc/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/video/
 
 MP_CFLAGS += -I$(BUILD)/$(MICROPY_DIR)/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/boards/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/py/
-MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/mp-readline
-MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/mp-readline/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/
-MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/flegftl
-MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/usb_misc
-MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/flegftl/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/usb_misc/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)/
 #MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/core/inc/
 #MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/class/inc/
 MP_CFLAGS += -I$(MP_BOARD_CONFIG_DIR)
@@ -259,6 +262,7 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/ehci/*.o
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/usb/device/source/khci/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/component/serial_manager/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/component/uart/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/video/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/osa/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/port_usdhc_irq/*.o)
@@ -284,6 +288,9 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/, \
 	ini.o                                   \
 	framebuffer.o                           \
 	array.o                                 \
+	usbdbg.o   \
+	sensor.o                                \
+	mutex.o                                 \
 	)
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/, \
@@ -348,6 +355,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/img/,\
 	ppm.o                                   \
 	gif.o                                   \
 	mjpeg.o                                 \
+	jpeg.o									\
 	fast.o                                  \
 	agast.o                                 \
 	orb.o                                   \
@@ -431,6 +439,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
 	py_helper.o                             \
 	py_omv.o                                \
 	py_time.o                               \
+	py_image.o                              \
 	)
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
@@ -518,10 +527,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	boards/$(TARGET)/board.o \
 	boards/$(TARGET)/pin_mux.o \
 	boards/$(TARGET)/clock_config.o \
-	)
-	
-	# 	usbdbg.o  TODO Dave: include after sensor works... Uses Sensor...
-	
+	)	
 else
 FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	stm32_it.o              \
