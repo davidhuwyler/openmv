@@ -501,6 +501,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	pendsv.o \
 	uart.o \
 	usb_app.o \
+	flash.o \
 	usbd_msc_storage.o \
 	usrsw.o \
 	isr.o \

@@ -7,7 +7,7 @@
  *
  */
 
-//#define OPENMVRT_SEEED //--> Is already defined if Target in Makefile: TARGET ?= OPENMVRT_SEEED
+#define OPENMVRT_SEEED //--> Is already defined if Target in Makefile: TARGET ?= OPENMVRT_SEEED
 
 #ifdef OPENMVRT_SEEED
 #include <stdio.h>
@@ -30,11 +30,8 @@
 #include "stackctrl.h"
 #include "gccollect.h"
 #include "readline.h"
-
-//Dave Added:
 #include "usb_app.h"
 #include "virtual_com.h"
-
 #include "repl.h"
 
 #include "mperrno.h"
@@ -671,18 +668,49 @@ STATIC bool init_sdcard_fs(bool first_soft_reset) {
 int main(void)
 {
 #ifdef OPENMVRT_SEEED
+	int retCode = 0;
+
     HAL_Init();
+
+
     // Basic sub-system init
-    led_init();
+    #if MICROPY_PY_THREAD
+    pyb_thread_init(&pyb_thread_main);
+    #endif
     pendsv_init();
+    led_init();
 
     bool first_soft_reset = true;
+
+	retCode = true;
+soft_reset:
+	{
+		//Flash Red LED a bit...
+		uint32_t wait;
+		uint32_t i = 0;
+		for (wait = HAL_GetTick(); wait < 1001; wait = HAL_GetTick()) {
+			if (wait % 125 == 0) {
+				led_state(1, (++i) & 1);
+			}
+			// __WFI();
+		}
+		led_state(1, 0);
+	}
+
+	//TODO Dave: Inclue a reset_mode update function
+	uint reset_mode = 1;
     machine_init();
 
     // more sub-system init
 #if MICROPY_HW_HAS_SDCARD
     if (first_soft_reset) {
         sdcard_init();
+
+        //Wait a bit...
+		volatile uint32_t t1, t2;
+		t1 = HAL_GetTick();
+		t2 = t1 + 2000;
+		while (HAL_GetTick() < t2) {HAL_WFI();}
     }
 #endif
 
@@ -694,7 +722,7 @@ int main(void)
      // Stack limit should be less than real stack size, so we have a
      // chance to recover from limit hit. (Limit is measured in bytes)
      mp_stack_set_top(&__StackTop);
-     mp_stack_set_limit(__StackSize);
+     mp_stack_set_limit(&__StackSize);
 
      // GC init
 #if MICROPY_ENABLE_GC
@@ -705,13 +733,14 @@ int main(void)
      // Micro Python init
      mp_init();
      mp_obj_list_init(mp_sys_path, 0);
+     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR_)); // current dir (or base dir of the script)
      mp_obj_list_init(mp_sys_argv, 0);
 
      readline_init0();
      pin_init0();
      uart_init0();
      pyb_usb_init0();
-     //usbdbg_init();
+     usbdbg_init();
 
 
 
@@ -751,21 +780,36 @@ int main(void)
 #endif
 
     // set sys.path based on mounted filesystems (/sd is first so it can override /flash)
-#if 0 //TODO Dave: QSTRs are not generated from OMV Main.c...
     if (mounted_sdcard) {
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_sd));
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_sd_slash_lib));
+    	sdcard_setSysPathToSD();
     }
     if (mounted_flash) {
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_flash));
-        mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_flash_slash_lib));
+    	flash_setSysPathToFlashFS();
     }
-#endif
+
 
 
     // reset config variables; they should be set by boot.py
     MP_STATE_PORT(pyb_config_main) = MP_OBJ_NULL;
 
+	#if 1 //#ifdef __CC_ARM
+	// run boot.py, if it exists
+	// TODO perhaps have pyb.reboot([bootpy]) function to soft-reboot and execute custom boot.py
+	if (reset_mode == 1 || reset_mode == 3) {
+		const char *boot_py = "boot.py";
+		mp_import_stat_t stat = mp_import_stat(boot_py);
+		if (stat == MP_IMPORT_STAT_FILE) {
+			PRINTF("Executing boot.py\r\n");
+			int ret = pyexec_file(boot_py);
+			if (ret & PYEXEC_FORCED_EXIT) {
+				goto soft_reset_exit;
+			}
+			if (!ret) {
+				flash_error(4);
+			}
+		}
+	}
+	#endif
 
 
 	#if defined(USE_DEVICE_MODE)
@@ -927,6 +971,27 @@ cleanup:
 
 #endif
 
+soft_reset_exit:
+
+	    // soft reset
+
+	printf("PYB: sync filesystems\n");
+	storage_flush();
+
+	printf("PYB: soft reboot\n");
+	// rocky ignore: timer_deinit();
+
+	// rocky ignore: uart_deinit();
+#if MICROPY_HW_ENABLE_CAN
+	// rocky ignore: can_deinit();
+#endif
+
+	#if MICROPY_PY_THREAD
+	pyb_thread_deinit();
+	#endif
+
+	first_soft_reset = false;
+	goto soft_reset;
 
     return 0;
 
