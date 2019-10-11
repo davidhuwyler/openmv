@@ -736,6 +736,7 @@ soft_reset:
      mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR_)); // current dir (or base dir of the script)
      mp_obj_list_init(mp_sys_argv, 0);
 
+     switch_init0();
      readline_init0();
      pin_init0();
      uart_init0();
