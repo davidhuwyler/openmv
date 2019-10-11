@@ -1,10 +1,12 @@
 /*
  * This file is part of the OpenMV project.
- * Copyright (c) 2013/2014 Ibrahim Abdelkader <i.abdalkader@gmail.com>
+ *
+ * Copyright (c) 2013-2019 Ibrahim Abdelkader <iabdalkader@openmv.io>
+ * Copyright (c) 2013-2019 Kwabena W. Agyeman <kwagyeman@openmv.io>
+ *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
  * qstrs specific to openmv
- *
  */
 
 // OMV Module
@@ -346,6 +348,7 @@ Q(isconnected)
 Q(connected_sta)
 Q(wait_for_sta)
 Q(ifconfig)
+Q(netinfo)
 Q(fw_version)
 Q(fw_dump)
 Q(fw_update)
@@ -445,6 +448,12 @@ Q(compressed)
 // Compressed for IDE (out of place)
 Q(compressed_for_ide)
 // duplicate Q(quality)
+
+// Encode for IDE (in place)
+Q(jpeg_encode_for_ide)
+
+// Encoded for IDE (out of place)
+Q(jpeg_encoded_for_ide)
 
 // Copy
 // duplicate Q(copy)

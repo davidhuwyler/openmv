@@ -1,10 +1,12 @@
 /*
  * This file is part of the OpenMV project.
- * Copyright (c) 2013/2014 Ibrahim Abdelkader <i.abdalkader@gmail.com>
+ *
+ * Copyright (c) 2013-2019 Ibrahim Abdelkader <iabdalkader@openmv.io>
+ * Copyright (c) 2013-2019 Kwabena W. Agyeman <kwagyeman@openmv.io>
+ *
  * This work is licensed under the MIT license, see the file LICENSE for details.
  *
  * Sensor abstraction layer.
- *
  */
 #include <stdlib.h>
 #include <string.h>
@@ -398,8 +400,12 @@ int sensor_reset()
     sensor.framerate   = 0;
     sensor.gainceiling = 0;
     sensor.vsync_gpio  = NULL;
+
     // Reset default color palette.
     sensor.color_palette = rainbow_table;
+
+    // Restore shutdown state on reset.
+    sensor_shutdown(false);
 
     // Call sensor-specific reset function
     if (sensor.reset(&sensor) != 0) {
@@ -801,7 +807,6 @@ static void sensor_check_buffsize()
             sensor_set_pixformat(PIXFORMAT_BAYER);
         }
     }
-
 }
 
 // This function is called back after each line transfer is complete,
@@ -998,12 +1003,12 @@ int sensor_snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
             case PIXFORMAT_JPEG:
                 // Read the number of data items transferred
                 MAIN_FB()->bpp = ((MAX_XFER_SIZE/4) - __HAL_DMA_GET_COUNTER(&DMAHandle))*4;
-                // Remove trailing zeros...
-                if (MAIN_FB()->bpp) {
-                    while (!MAIN_FB()->pixels[MAIN_FB()->bpp - 1]) {
-                        MAIN_FB()->bpp -= 1;
-                    }
-                }
+                #if defined(MCU_SERIES_F7) || defined(MCU_SERIES_H7)
+                // In JPEG mode, the DMA uses the frame buffer memory directly instead of the line buffer, which is
+                // located in a cacheable region and therefore must be invalidated before the CPU can access it again.
+                // Note: The frame buffer address is 32-byte aligned, and the size is a multiple of 32-bytes for all boards.
+                SCB_InvalidateDCache_by_Addr((uint32_t*)MAIN_FB()->pixels, OMV_RAW_BUF_SIZE);
+                #endif
                 break;
             default:
                 break;
