@@ -63,17 +63,11 @@
 #include "servo.h"
 
 //#include "sensor.h"
-//#include "usbdbg.h"
+#include "usbdbg.h"
 //#include "wifidbg.h"
 //#include "sdram.h"
 #include "fb_alloc.h"
 #include "ff_wrapper.h"
-
-//#include "usbd_core.h"
-//#include "usbd_desc.h"
-//#include "usbd_cdc_msc_hid.h"
-//#include "usbd_cdc_interface.h"
-//#include "usbd_msc_storage.h"
 
 #include "py_sensor.h"
 #include "py_image.h"
@@ -287,9 +281,6 @@ static const char fresh_selftest_py[] =
 
 void flash_error(int n) {
 
-#ifdef OPENMVRT_SEEED
-
-#else
     led_state(LED_RED, 0);
     led_state(LED_GREEN, 0);
     led_state(LED_BLUE, 0);
@@ -300,9 +291,6 @@ void flash_error(int n) {
         HAL_Delay(100);
     }
     led_state(LED_RED, 0);
-#endif
-
-
 }
 
 
@@ -685,19 +673,17 @@ int main(void)
 	retCode = true;
 soft_reset:
 	{
-		//Flash Red LED a bit...
-		uint32_t wait;
-		uint32_t i = 0;
-		for (wait = HAL_GetTick(); wait < 1001; wait = HAL_GetTick()) {
-			if (wait % 125 == 0) {
-				led_state(1, (++i) & 1);
-			}
-			// __WFI();
+		//Flash Magenta LED 3times at Startup
+		HAL_Delay(200);
+		for(int i = 1; i<7; i++)
+		{
+			led_state(LED_RED,i%2);
+			led_state(LED_BLUE,i%2);
+			HAL_Delay(200);
 		}
-		led_state(1, 0);
 	}
 
-	//TODO Dave: Inclue a reset_mode update function
+	//TODO Dave: Include a reset_mode update function
 	uint reset_mode = 1;
     machine_init();
 
@@ -705,12 +691,7 @@ soft_reset:
 #if MICROPY_HW_HAS_SDCARD
     if (first_soft_reset) {
         sdcard_init();
-
-        //Wait a bit...
-		volatile uint32_t t1, t2;
-		t1 = HAL_GetTick();
-		t2 = t1 + 200;
-		while (HAL_GetTick() < t2) {HAL_WFI();}
+        HAL_Delay(200);
     }
 #endif
 
@@ -744,7 +725,6 @@ soft_reset:
      usbdbg_init();
 
 
-
      // Initialise the local flash filesystem.
      // Create it if needed, mount in on /flash, and set it as current dir.
  	bool mounted_flash;
@@ -768,10 +748,8 @@ soft_reset:
 					break;
 				else
 				{
-					uint32_t t0;
 					PRINTF("can't mount SD card FS!\r\n");
-					t0 = HAL_GetTick();
-					while (HAL_GetTick() - t0 < 250) {}
+					HAL_Delay(200);
 				}
 			}
         }
@@ -788,12 +766,9 @@ soft_reset:
     	flash_setSysPathToFlashFS();
     }
 
-
-
     // reset config variables; they should be set by boot.py
     MP_STATE_PORT(pyb_config_main) = MP_OBJ_NULL;
 
-	#if 1 //#ifdef __CC_ARM
 	// run boot.py, if it exists
 	// TODO perhaps have pyb.reboot([bootpy]) function to soft-reboot and execute custom boot.py
 	if (reset_mode == 1 || reset_mode == 3) {
@@ -809,9 +784,11 @@ soft_reset:
 				flash_error(4);
 			}
 		}
+		else
+		{
+			flash_error(4);
+		}
 	}
-	#endif
-
 
 	#if defined(USE_DEVICE_MODE)
     // init USB device to default setting if it was not already configured
@@ -823,39 +800,7 @@ soft_reset:
     }
 	#endif
 
-
      VCOM_Open();
-
-
-
-
-
-
-
-#if 0 //Dave Working repl
-
-    #if MICROPY_ENABLE_COMPILER
-    #if MICROPY_REPL_EVENT_DRIVEN
-    pyexec_event_repl_init();
-    for (;;) {
-        int c = mp_hal_stdin_rx_chr();
-        if (pyexec_event_repl_process_char(c)) {
-            break;
-        }
-    }
-    #else
-    pyexec_friendly_repl();
-    #endif
-    //do_str("print('hello world!', list(x+1 for x in range(10)), end='eol\\n')", MP_PARSE_SINGLE_INPUT);
-    //do_str("for i in range(10):\r\n  print(i)", MP_PARSE_FILE_INPUT);
-    #else
-    pyexec_frozen_module("frozentest.py");
-    #endif
-    mp_deinit();
-
-#endif
-
-#if 1 //new sd try
 
 	int ret = 0;
 	PRINTF("Enter OpenMV main\r\n");
@@ -888,6 +833,7 @@ soft_reset:
 			if (stat == MP_IMPORT_STAT_FILE) {
 				nlr_buf_t nlr;
 				if (nlr_push(&nlr) == 0) {
+					PRINTF("executing main.py...\r\n");
 					int ret = pyexec_file("main.py");
 					if (ret & PYEXEC_FORCED_EXIT) {
 						ret = 1;
@@ -898,13 +844,10 @@ soft_reset:
 					nlr_pop();
 				}
 				else {
-					// 2019.03.27 19:52 rocky: if main.py is interrupted by running another script,
-					// we have to do soft reset, otherwise fb alloc logic may fail and led to hard fault
-					// In this case, it makes user have to press start button twice to start the script in OpenMV IDE
+					flash_error(3);
 					goto cleanup;
 				}
 			}
-			// exec_boot_script("/sd/main.py", false, true);
 		}
 	}
 
@@ -927,7 +870,6 @@ soft_reset:
                     break;
                 }
             }
-
             nlr_pop();
         }
     }
@@ -969,8 +911,6 @@ cleanup:
 //    can_deinit();
 	ProfReset();
 
-
-#endif
 
 soft_reset_exit:
 
