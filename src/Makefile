@@ -491,6 +491,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	gchelper.o              \
 	mphalport.o 			\
 	mpthreadport.o \
+	pybthread.o \
 	modmachine.o \
 	modpyb.o \
 	modmcu.o \

@@ -33,6 +33,7 @@
 #include "usb_app.h"
 #include "virtual_com.h"
 #include "repl.h"
+#include "pybthread.h"
 
 #include "mperrno.h"
 #include "lib/utils/pyexec.h"
@@ -149,6 +150,7 @@
 #endif
 
 #ifdef OPENMVRT_SEEED
+pyb_thread_t pyb_thread_main;
 static fs_user_mount_t fs_user_mount_flash;
 
 int errno;
@@ -655,11 +657,8 @@ STATIC bool init_sdcard_fs(bool first_soft_reset) {
 
 int main(void)
 {
-#ifdef OPENMVRT_SEEED
 	int retCode = 0;
-
     HAL_Init();
-
 
     // Basic sub-system init
     #if MICROPY_PY_THREAD
@@ -709,7 +708,7 @@ soft_reset:
 #if MICROPY_ENABLE_GC
      gc_init(&_heap_start,&_heap_end);
 #endif
-     //gc_init(&_heap_start, &_heap_end);
+     MP_STATE_PORT(omv_ide_irq) = 0;
 
      // Micro Python init
      mp_init();
@@ -721,9 +720,8 @@ soft_reset:
      readline_init0();
      pin_init0();
      uart_init0();
-     pyb_usb_init0();
      usbdbg_init();
-
+     pyb_usb_init0();
 
      // Initialise the local flash filesystem.
      // Create it if needed, mount in on /flash, and set it as current dir.
@@ -769,7 +767,9 @@ soft_reset:
     // reset config variables; they should be set by boot.py
     MP_STATE_PORT(pyb_config_main) = MP_OBJ_NULL;
 
-	// run boot.py, if it exists
+	/*--------------------------------------------------*
+	 *  	  		Run Boot.py from SD	(of Flash)		*
+	 *--------------------------------------------------*/
 	// TODO perhaps have pyb.reboot([bootpy]) function to soft-reboot and execute custom boot.py
 	if (reset_mode == 1 || reset_mode == 3) {
 		const char *boot_py = "boot.py";
@@ -783,10 +783,6 @@ soft_reset:
 			if (!ret) {
 				flash_error(4);
 			}
-		}
-		else
-		{
-			flash_error(4);
 		}
 	}
 
@@ -821,7 +817,9 @@ soft_reset:
     file_buffer_init0();
 
  MainLoop:
-    // Run boot script(s)
+	/*--------------------------------------------------*
+	 *  	  		Run Main.py from SD					*
+	 *--------------------------------------------------*/
 	if (!usbdbg_script_ready()) {
 		if (first_soft_reset) {
 			first_soft_reset = 0;
@@ -851,7 +849,9 @@ soft_reset:
 		}
 	}
 
-    // If there's no script ready, just re-exec REPL
+	/*--------------------------------------------------*
+	 *  	 Run REPL (if no OpenMV sript ready)		*
+	 *--------------------------------------------------*/
     while (!usbdbg_script_ready()) {
         nlr_buf_t nlr;
 
@@ -874,6 +874,9 @@ soft_reset:
         }
     }
 
+	/*--------------------------------------------------*
+	 *  	  		Run OpenMV IDE Skript				*
+	 *--------------------------------------------------*/
     if (usbdbg_script_ready()) {
         nlr_buf_t nlr;
 		PRINTF("script ready!\r\n");
@@ -883,16 +886,10 @@ soft_reset:
 			#ifndef OMV_MPY_ONLY
 			fb_alloc_init0();
 			#endif
-#if 0
-			vstr_t *buf = usbdbg_get_script();
-			mp_obj_t code = pyexec_compile_str(buf);
-            // enable IDE interrupt
-            usbdbg_set_irq_enabled(true);
-            pyexec_exec_code(code);
-#else
+
 			usbdbg_set_irq_enabled(true);
 			pyexec_str(usbdbg_get_script());
-#endif
+
             nlr_pop();
         } else {
             mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
@@ -935,255 +932,4 @@ soft_reset_exit:
 	goto soft_reset;
 
     return 0;
-
-
-
-#else
-    int sensor_init_ret = 0;
-    bool sdcard_mounted = false;
-    bool first_soft_reset = true;
-
-    // Uncomment to disable write buffer to get precise faults.
-    // NOTE: Cache should be disabled on M7.
-    //SCnSCB->ACTLR |= SCnSCB_ACTLR_DISDEFWBUF_Msk;
-
-    // STM32F4xx HAL library initialization:
-    //  - Set NVIC Group Priority to 4
-    //  - Configure the Flash prefetch, instruction and Data caches
-    //  - Configure the Systick to generate an interrupt each 1 msec
-    //  NOTE: The bootloader enables the CCM/DTCM memory.
-
-    HAL_Init();
-
-    // Basic sub-system init
-    led_init();
-    pendsv_init();
-    pyb_thread_init(&pyb_thread_main);
-
-    // Re-enable IRQs (disabled by bootloader)
-    __enable_irq();
-
-soft_reset:
-    led_state(LED_IR, 0);
-    led_state(LED_RED, 1);
-    led_state(LED_GREEN, 1);
-    led_state(LED_BLUE, 1);
-
-    machine_init();
-
-    // Python threading init
-    mp_thread_init();
-
-    // Stack limit should be less than real stack size, so we have a
-    // chance to recover from limit hit. (Limit is measured in bytes)
-    mp_stack_set_top(&_ram_end);
-    mp_stack_set_limit((char*)&_ram_end - (char*)&_heap_end - 1024);
-
-    // GC init
-    gc_init(&_heap_start, &_heap_end);
-
-    // Micro Python init
-    mp_init();
-    mp_obj_list_init(mp_sys_path, 0);
-    mp_obj_list_init(mp_sys_argv, 0);
-
-    // Initialise low-level sub-systems. Here we need to do the very basic
-    // things like zeroing out memory and resetting any of the sub-systems.
-    readline_init0();
-    pin_init0();
-    extint_init0();
-    timer_init0();
-    #if MICROPY_HW_ENABLE_CAN
-    can_init0();
-    #endif
-    i2c_init0();
-    spi_init0();
-    uart_init0();
-    MP_STATE_PORT(pyb_stdio_uart) = NULL; // need to zero
-    dac_init();
-    pyb_usb_init0();
-    sensor_init0();
-    fb_alloc_init0();
-    file_buffer_init0();
-    py_lcd_init0();
-    py_fir_init0();
-    py_tv_init0();
-    servo_init();
-    usbdbg_init();
-    sdcard_init();
-
-    if (first_soft_reset) {
-        rtc_init_start(false);
-    }
-
-    // Initialize the sensor and check the result after
-    // mounting the file-system to log errors (if any).
-    if (first_soft_reset) {
-        sensor_init_ret = sensor_init();
-    }
-
-    mod_network_init();
-
-    // Remove the BASEPRI masking (if any)
-    irq_set_base_priority(0);
-
-    // Initialize storage
-    if (sdcard_is_present()) {
-        // Init the vfs object
-        vfs_fat->flags = 0;
-        sdcard_init_vfs(vfs_fat, 1);
-
-        // Try to mount the SD card
-        FRESULT res = f_mount(&vfs_fat->fatfs);
-        if (res != FR_OK) {
-            sdcard_mounted = false;
-        } else {
-            sdcard_mounted = true;
-            // Set USB medium to SD
-            pyb_usb_storage_medium = PYB_USB_STORAGE_MEDIUM_SDCARD;
-        }
-    }
-
-    if (sdcard_mounted == false) {
-        storage_init();
-
-        // init the vfs object
-        vfs_fat->flags = 0;
-        pyb_flash_init_vfs(vfs_fat);
-
-        // Try to mount the flash
-        FRESULT res = f_mount(&vfs_fat->fatfs);
-
-        if (res == FR_NO_FILESYSTEM) {
-            // Create a fresh fs
-            make_flash_fs();
-            // Flush storage
-            storage_flush();
-        } else if (res != FR_OK) {
-            __fatal_error("Could not access LFS\n");
-        }
-
-        // Set USB medium to flash
-        pyb_usb_storage_medium = PYB_USB_STORAGE_MEDIUM_FLASH;
-    }
-
-    // Mark FS as OpenMV disk.
-    f_touch("/.openmv_disk");
-
-    // Mount the storage device (there should be no other devices mounted at this point)
-    // we allocate this structure on the heap because vfs->next is a root pointer.
-    mp_vfs_mount_t *vfs = m_new_obj_maybe(mp_vfs_mount_t);
-    if (vfs == NULL) {
-        __fatal_error("Failed to alloc memory for vfs mount\n");
-    }
-
-    vfs->str = "/";
-    vfs->len = 1;
-    vfs->obj = MP_OBJ_FROM_PTR(vfs_fat);
-    vfs->next = NULL;
-    MP_STATE_VM(vfs_mount_table) = vfs;
-    MP_STATE_PORT(vfs_cur) = vfs;
-
-    // Parse OpenMV configuration file.
-    openmv_config_t openmv_config;
-    memset(&openmv_config, 0, sizeof(openmv_config));
-    // Parse config, and init wifi if enabled.
-    ini_parse(&vfs_fat->fatfs, "/openmv.config", ini_handler_callback, &openmv_config);
-    if (openmv_config.wifidbg == true &&
-            wifidbg_init(&openmv_config.wifidbg_config) != 0) {
-        openmv_config.wifidbg = false;
-    }
-
-    // Run boot script(s)
-    if (first_soft_reset) {
-        // Execute the boot.py script before initializing the USB dev
-        // to override the USB mode if required, otherwise VCP+MSC is used.
-        exec_boot_script("/boot.py", false, false);
-    }
-
-    // Init USB device to default setting if it was not already configured
-    if (!(pyb_usb_flags & PYB_USB_FLAG_USB_MODE_CALLED)) {
-        pyb_usb_dev_init(USBD_VID, USBD_PID_CDC_MSC, USBD_MODE_CDC_MSC, NULL);
-    }
-
-    // check sensor init result
-    if (first_soft_reset && sensor_init_ret != 0) {
-        char buf[512];
-        snprintf(buf, sizeof(buf), "Failed to init sensor, error:%d", sensor_init_ret);
-        __fatal_error(buf);
-    }
-
-    // Turn boot-up LEDs off
-    led_state(LED_RED, 0);
-    led_state(LED_GREEN, 0);
-    led_state(LED_BLUE, 0);
-
-    if (openmv_config.wifidbg == true) {
-        timer_tim5_init(100);
-    }
-
-    // Run boot script(s)
-    if (first_soft_reset) {
-        exec_boot_script("/selftest.py", true, false);
-        exec_boot_script("/main.py", false, true);
-    }
-
-    do {
-        usbdbg_init();
-
-        // If there's no script ready, just re-exec REPL
-        while (!usbdbg_script_ready()) {
-            nlr_buf_t nlr;
-
-            if (nlr_push(&nlr) == 0) {
-                // enable IDE interrupt
-                usbdbg_set_irq_enabled(true);
-
-                // run REPL
-                if (pyexec_mode_kind == PYEXEC_MODE_RAW_REPL) {
-                    if (pyexec_raw_repl() != 0) {
-                        break;
-                    }
-                } else {
-                    if (pyexec_friendly_repl() != 0) {
-                        break;
-                    }
-                }
-
-                nlr_pop();
-            }
-        }
-
-        if (usbdbg_script_ready()) {
-            nlr_buf_t nlr;
-            if (nlr_push(&nlr) == 0) {
-                // Enable IDE interrupt
-                usbdbg_set_irq_enabled(true);
-
-                // Execute the script.
-                pyexec_str(usbdbg_get_script());
-                nlr_pop();
-            } else {
-                mp_obj_print_exception(&mp_plat_print, (mp_obj_t)nlr.ret_val);
-            }
-        }
-    } while (openmv_config.wifidbg == true);
-
-    // Disable all other IRQs except Systick and Flash IRQs
-    // Note: FS IRQ is disable, since we're going for a soft-reset.
-    irq_set_base_priority(IRQ_PRI_FLASH+1);
-
-    // soft reset
-    storage_flush();
-    timer_deinit();
-    uart_deinit();
-    #if MICROPY_HW_ENABLE_CAN
-    can_deinit();
-    #endif
-    pyb_thread_deinit();
-
-    first_soft_reset = false;
-    goto soft_reset;
-#endif
-
 }
