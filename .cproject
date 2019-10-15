@@ -53,9 +53,15 @@
                     					
                     <folderInfo id="com.crt.advproject.toolchain.exe.debug.375992654.1886468212" name="/" resourcePath="src/micropython/ports/imxrt/mcusdk/video">
                         						
-                        <toolChain id="com.crt.advproject.toolchain.exe.debug.957747240.375661743" name="NXP MCU Tools" superClass="com.crt.advproject.toolchain.exe.debug.957747240" unusedChildren=""/>
+                        <toolChain id="com.crt.advproject.toolchain.exe.debug.957747240.375661743" name="NXP MCU Tools" unusedChildren=""/>
                         					
                     </folderInfo>
+                    					
+                    <sourceEntries>
+                        						
+                        <entry excluding="src/micropython/ports/imxrt/mcusdk/CMSIS" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+                        					
+                    </sourceEntries>
                     				
                 </configuration>
                 			
