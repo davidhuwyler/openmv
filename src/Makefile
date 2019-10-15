@@ -124,6 +124,7 @@ MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/boards/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/py/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/mp-readline/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/oofatfs/
+MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/lib/cmsis/inc/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/flegftl/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/usb_misc/
