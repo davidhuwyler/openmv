@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include "mpconfigboard.h"
 #include "hal_wrapper.h"
 #include "mpconfig.h"
 #include "systick.h"
@@ -573,6 +574,246 @@ HAL_StatusTypeDef HAL_Init(void)
 	return HAL_OK;
 }
 
+#if(MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
+static const char fresh_boot_py[] __ALIGNED(4) =
+"# boot.py -- run on boot-up\r\n"
+"# can run arbitrary Python, but best to keep it minimal\r\n"
+"\r\n"
+"import machine\r\n"
+"import pyb\r\n"
+"#pyb.main('main.py') # main script to run after this one\r\n"
+"#pyb.usb_mode('VCP+MSC') # act as a serial and a storage device\r\n"
+"#pyb.usb_mode('VCP+HID') # act as a serial device and a mouse\r\n"
+;
+
+static const char fresh_selftest_py[] =
+"import sensor, time, pyb\n"
+"\n"
+"def test_int_adc():\n"
+"    adc  = pyb.ADCAll(12)\n"
+"    # Test VBAT\n"
+"    vbat = adc.read_core_vbat()\n"
+"    vbat_diff = abs(vbat-3.3)\n"
+"    if (vbat_diff > 0.1):\n"
+"        raise Exception('INTERNAL ADC TEST FAILED VBAT=%fv'%vbat)\n"
+"\n"
+"    # Test VREF\n"
+"    vref = adc.read_core_vref()\n"
+"    vref_diff = abs(vref-1.2)\n"
+"    if (vref_diff > 0.1):\n"
+"        raise Exception('INTERNAL ADC TEST FAILED VREF=%fv'%vref)\n"
+"    adc = None\n"
+"    print('INTERNAL ADC TEST PASSED...')\n"
+"\n"
+"def test_color_bars():\n"
+"    sensor.reset()\n"
+"    # Set sensor settings\n"
+"    sensor.set_brightness(0)\n"
+"    sensor.set_saturation(3)\n"
+"    sensor.set_gainceiling(8)\n"
+"    sensor.set_contrast(2)\n"
+"\n"
+"    # Set sensor pixel format\n"
+"    sensor.set_framesize(sensor.QVGA)\n"
+"    sensor.set_pixformat(sensor.RGB565)\n"
+"\n"
+"    # Enable colorbar test mode\n"
+"    sensor.set_colorbar(True)\n"
+"\n"
+"    # Skip a few frames to allow the sensor settle down\n"
+"    for i in range(0, 100):\n"
+"        image = sensor.snapshot()\n"
+"\n"
+"    #color bars thresholds\n"
+"    t = [lambda r, g, b: r < 70  and g < 70  and b < 70,   # Black\n"
+"         lambda r, g, b: r < 70  and g < 70  and b > 200,  # Blue\n"
+"         lambda r, g, b: r > 200 and g < 70  and b < 70,   # Red\n"
+"         lambda r, g, b: r > 200 and g < 70  and b > 200,  # Purple\n"
+"         lambda r, g, b: r < 70  and g > 200 and b < 70,   # Green\n"
+"         lambda r, g, b: r < 70  and g > 200 and b > 200,  # Aqua\n"
+"         lambda r, g, b: r > 200 and g > 200 and b < 70,   # Yellow\n"
+"         lambda r, g, b: r > 200 and g > 200 and b > 200]  # White\n"
+"\n"
+"    # color bars are inverted for OV7725\n"
+"    if (sensor.get_id() == sensor.OV7725):\n"
+"        t = t[::-1]\n"
+"\n"
+"    #320x240 image with 8 color bars each one is approx 40 pixels.\n"
+"    #we start from the center of the frame buffer, and average the\n"
+"    #values of 10 sample pixels from the center of each color bar.\n"
+"    for i in range(0, 8):\n"
+"        avg = (0, 0, 0)\n"
+"        idx = 40*i+20 #center of colorbars\n"
+"        for off in range(0, 10): #avg 10 pixels\n"
+"            rgb = image.get_pixel(idx+off, 120)\n"
+"            avg = tuple(map(sum, zip(avg, rgb)))\n"
+"\n"
+"        if not t[i](avg[0]/10, avg[1]/10, avg[2]/10):\n"
+"            raise Exception('COLOR BARS TEST FAILED.'\n"
+"            'BAR#(%d): RGB(%d,%d,%d)'%(i+1, avg[0]/10, avg[1]/10, avg[2]/10))\n"
+"\n"
+"    print('COLOR BARS TEST PASSED...')\n"
+"\n"
+"if __name__ == '__main__':\n"
+"    print('')\n"
+"    test_int_adc()\n"
+"    test_color_bars()\n"
+"\n"
+;
+
+static const char fresh_main_py[] __ALIGNED(4) =
+"# main.py -- put your code here!\n"
+"import pyb, time\n"
+"led = pyb.LED(1)\n"
+"usb = pyb.USB_VCP()\n"
+"while (usb.isconnected()==False):\n"
+"   led.on()\n"
+"   time.sleep(150)\n"
+"   led.off()\n"
+"   time.sleep(100)\n"
+"   led.on()\n"
+"   time.sleep(150)\n"
+"   led.off()\n"
+"   time.sleep(600)\n"
+;
+
+static const char fresh_pybcdc_inf[] __ALIGNED(4) =
+#include "genhdr/pybcdc_inf.h"
+;
+
+static const char fresh_readme_txt[] __ALIGNED(4) =
+"This is a MicroPython board\r\n"
+"\r\n"
+"You can get started right away by writing your Python code in 'main.py'.\r\n"
+"\r\n"
+"For a serial prompt:\r\n"
+" - Windows: you need to go to 'Device manager', right click on the unknown device,\r\n"
+"   then update the driver software, using the 'pybcdc.inf' file found on this drive.\r\n"
+"   Then use a terminal program like Hyperterminal or putty.\r\n"
+" - Mac OS X: use the command: screen /dev/tty.usbmodem*\r\n"
+" - Linux: use the command: screen /dev/ttyACM0\r\n"
+"\r\n"
+"Please visit http://micropython.org/help/ for further help.\r\n"
+"Thank you for supporting the OpenMV project!\r\n"
+"\r\n"
+"To download the IDE, please visit:\r\n"
+"https://openmv.io/pages/download\r\n"
+"\r\n"
+"For tutorials and documentation, please visit:\r\n"
+"http://docs.openmv.io/\r\n"
+"\r\n"
+"For technical support and projects, please visit the forums:\r\n"
+"http://forums.openmv.io/\r\n"
+"\r\n"
+"Please use github to report bugs and issues:\r\n"
+"https://github.com/openmv/openmv\r\n"
+;
+
+// avoid inlining to avoid stack usage within main()
+MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
+    // init the vfs object
+    fs_user_mount_t *vfs_fat = &fs_user_mount_flash;
+    vfs_fat->flags = 0;
+    pyb_flash_init_vfs(vfs_fat);
+
+    // try to mount the flash
+    FRESULT res = f_mount(&vfs_fat->fatfs);
+
+    if (reset_mode == 3 || res == FR_NO_FILESYSTEM) {
+        // no filesystem, or asked to reset it, so create a fresh one
+
+        // LED on to indicate creation of LFS
+        led_state(PYB_LED_GREEN, 1);
+        uint32_t start_tick = HAL_GetTick();
+
+        uint8_t working_buf[_MAX_SS];
+        res = f_mkfs(&vfs_fat->fatfs, FM_FAT, 0, working_buf, sizeof(working_buf));
+        if (res == FR_OK) {
+            // success creating fresh LFS
+        } else {
+            printf("PYB: can't create flash filesystem\n");
+            return false;
+        }
+
+        // set label
+        f_setlabel(&vfs_fat->fatfs, "pybflash");
+
+        // create empty main.py
+        FIL fp;
+        f_open(&vfs_fat->fatfs, &fp, "/main.py", FA_WRITE | FA_CREATE_ALWAYS);
+        UINT n;
+        f_write(&fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */, &n);
+        // TODO check we could write n bytes
+        f_close(&fp);
+
+        // create .inf driver file
+        f_open(&vfs_fat->fatfs, &fp, "/pybcdc.inf", FA_WRITE | FA_CREATE_ALWAYS);
+        f_write(&fp, fresh_pybcdc_inf, sizeof(fresh_pybcdc_inf) - 1 /* don't count null terminator */, &n);
+        f_close(&fp);
+
+        // create readme file
+        f_open(&vfs_fat->fatfs, &fp, "/README.txt", FA_WRITE | FA_CREATE_ALWAYS);
+        f_write(&fp, fresh_readme_txt, sizeof(fresh_readme_txt) - 1 /* don't count null terminator */, &n);
+        f_close(&fp);
+
+	    // Create default selftest.py
+	    f_open(&vfs_fat->fatfs, &fp, "/selftest.py", FA_WRITE | FA_CREATE_ALWAYS);
+	    f_write(&fp, fresh_selftest_py, sizeof(fresh_selftest_py) - 1 /* don't count null terminator */, &n);
+	    f_close(&fp);
+
+        // keep LED on for at least 200ms
+        sys_tick_wait_at_least(start_tick, 200);
+        led_state(PYB_LED_GREEN, 0);
+    } else if (res == FR_OK) {
+        // mount sucessful
+    } else {
+    fail:
+        printf("PYB: can't mount flash\n");
+        return false;
+    }
+
+    // mount the flash device (there should be no other devices mounted at this point)
+    // we allocate this structure on the heap because vfs->next is a root pointer
+    mp_vfs_mount_t *vfs = m_new_obj_maybe(mp_vfs_mount_t);
+    if (vfs == NULL) {
+        goto fail;
+    }
+    vfs->str = "/flash";
+    vfs->len = 6;
+    vfs->obj = MP_OBJ_FROM_PTR(vfs_fat);
+    vfs->next = NULL;
+    MP_STATE_VM(vfs_mount_table) = vfs;
+
+    // The current directory is used as the boot up directory.
+    // It is set to the internal flash filesystem by default.
+    MP_STATE_PORT(vfs_cur) = vfs;
+
+    // Make sure we have a /flash/boot.py.  Create it if needed.
+    FILINFO fno;
+    res = f_stat(&vfs_fat->fatfs, "/boot.py", &fno);
+    if (res != FR_OK) {
+        // doesn't exist, create fresh file
+
+        // LED on to indicate creation of boot.py
+        led_state(PYB_LED_GREEN, 1);
+        uint32_t start_tick = HAL_GetTick();
+
+        FIL fp;
+        f_open(&vfs_fat->fatfs, &fp, "/boot.py", FA_WRITE | FA_CREATE_ALWAYS);
+        UINT n;
+        f_write(&fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */, &n);
+        // TODO check we could write n bytes
+        f_close(&fp);
+
+        // keep LED on for at least 200ms
+        sys_tick_wait_at_least(start_tick, 200);
+        led_state(PYB_LED_GREEN, 0);
+    }
+
+    return true;
+}
+#endif //(MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
+
 #if MICROPY_HW_HAS_SDCARD
 STATIC bool init_sdcard_fs(bool first_soft_reset) {
     bool first_part = true;
@@ -723,10 +964,12 @@ soft_reset:
      usbdbg_init();
      pyb_usb_init0();
 
-     // Initialise the local flash filesystem.
+ 	/*--------------------------------------------------*
+ 	 *  	  	Init/Mount FlashFileSystem				*
+ 	 *--------------------------------------------------*/
      // Create it if needed, mount in on /flash, and set it as current dir.
  	bool mounted_flash;
- 	#if !defined(XIP_EXTERNAL_FLASH) && defined(EVK1050_60_HYPER)
+ 	#if !defined(XIP_EXTERNAL_FLASH) && (MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
      mounted_flash = init_flash_fs(reset_mode);
  	#else
  	mounted_flash = 0;
@@ -734,6 +977,9 @@ soft_reset:
 
 
     bool mounted_sdcard = false;
+	/*--------------------------------------------------*
+	 *  	  		Init/Mount SD Card						*
+	 *--------------------------------------------------*/
 #if MICROPY_HW_HAS_SDCARD
     // if an SD card is present then mount it on /sd/
     if (sdcard_is_present()) {
