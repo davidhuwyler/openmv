@@ -9,6 +9,7 @@
 #ifndef __OMV_BOARDCONFIG_H__
 #define __OMV_BOARDCONFIG_H__
 #include "../../overlay_manager.h"
+#include "pin.h"
 // Architecture info
 #define OMV_ARCH_STR            "OpenMV i.MX RT1050/60 port" // 33 chars max
 #define OMV_BOARD_TYPE          "M7"
@@ -131,83 +132,33 @@
 #define OMV_SRAM2_ORIGIN    0x2007C000
 #define OMV_SRAM2_LENGTH    16K
 
-/* SCCB/I2C */
-#define SCCB_I2C                (I2C1)
-#define SCCB_AF                 (GPIO_AF4_I2C1)
-#define SCCB_CLK_ENABLE()       __I2C1_CLK_ENABLE()
-#define SCCB_CLK_DISABLE()      __I2C1_CLK_DISABLE()
-#define SCCB_PORT               (GPIOB)
-#define SCCB_SCL_PIN            (GPIO_PIN_8)
-#define SCCB_SDA_PIN            (GPIO_PIN_9)
+/* SCCB/I2C (Camera Communication) */
+extern const pin_obj_t 			pin_AD_B1_00;
+extern const pin_obj_t 			pin_AD_B1_01;
+#define SCCB_SCL_PINOBJ			pin_AD_B1_00
+#define SCCB_SDA_PINOBJ			pin_AD_B1_01
+#define SCCB_I2C                (LPI2C1)
+#define SCCB_PORT               (SCCB_SCL_PINOBJ.gpio)
+#define SCCB_SCL_PIN            (SCCB_SCL_PINOBJ.pin)
+#define SCCB_SDA_PIN            (SCCB_SDA_PINOBJ.pin)
 
 /* DCMI */
-#define DCMI_TIM                (TIM1)
-#define DCMI_TIM_PIN            (GPIO_PIN_8)
-#define DCMI_TIM_PORT           (GPIOA)
-#define DCMI_TIM_AF             (GPIO_AF1_TIM1)
-#define DCMI_TIM_CHANNEL        (TIM_CHANNEL_1)
-#define DCMI_TIM_CLK_ENABLE()   __TIM1_CLK_ENABLE()
-#define DCMI_TIM_CLK_DISABLE()  __TIM1_CLK_DISABLE()4
-#define DCMI_TIM_PCLK_FREQ()    HAL_RCC_GetPCLK2Freq()
+extern const pin_obj_t 			pin_AD_B1_02;
+#define DCMI_RESET_PINOBJ		pin_AD_B1_02
+#define DCMI_RESET_PIN          (DCMI_RESET_PINOBJ.pin)
+#define DCMI_RESET_PORT         (DCMI_RESET_PINOBJ.gpio)
 
-#define DCMI_RESET_PIN          (GPIO_PIN_10)
-#define DCMI_RESET_PORT         (GPIOA)
+extern const pin_obj_t 			pin_AD_B1_03;
+#define DCMI_PWDN_PINOBJ		pin_AD_B1_03
+#define DCMI_PWDN_PIN          	(DCMI_PWDN_PINOBJ.pin)
+#define DCMI_PWDN_PORT	        (DCMI_PWDN_PINOBJ.gpio)
 
-#define DCMI_PWDN_PIN           (GPIO_PIN_5)
-#define DCMI_PWDN_PORT          (GPIOB)
+#define DCMI_RESET_LOW()        GPIO_PinWrite(DCMI_RESET_PORT, DCMI_RESET_PIN, 0);
+#define DCMI_RESET_HIGH()       GPIO_PinWrite(DCMI_RESET_PORT, DCMI_RESET_PIN, 1);
 
-#define DCMI_FREX_PIN           (GPIO_PIN_9)
-#define DCMI_FREX_PORT          (GPIOD)
+#define DCMI_PWDN_LOW()         GPIO_PinWrite(DCMI_PWDN_PORT, DCMI_PWDN_PIN, 0);
+#define DCMI_PWDN_HIGH()        GPIO_PinWrite(DCMI_PWDN_PORT, DCMI_PWDN_PIN, 1);
 
-#define DCMI_EXPST_PIN          (GPIO_PIN_8)
-#define DCMI_EXPST_PORT         (GPIOD)
-
-#define DCMI_FSIN_PIN           (GPIO_PIN_3)
-#define DCMI_FSIN_PORT          (GPIOD)
-
-#define DCMI_D0_PIN             (GPIO_PIN_6)
-#define DCMI_D1_PIN             (GPIO_PIN_7)
-#define DCMI_D2_PIN             (GPIO_PIN_0)
-#define DCMI_D3_PIN             (GPIO_PIN_1)
-#define DCMI_D4_PIN             (GPIO_PIN_4)
-#define DCMI_D5_PIN             (GPIO_PIN_6)
-#define DCMI_D6_PIN             (GPIO_PIN_5)
-#define DCMI_D7_PIN             (GPIO_PIN_6)
-
-#define DCMI_D0_PORT            (GPIOC)
-#define DCMI_D1_PORT            (GPIOC)
-#define DCMI_D2_PORT            (GPIOE)
-#define DCMI_D3_PORT            (GPIOE)
-#define DCMI_D4_PORT            (GPIOE)
-#define DCMI_D5_PORT            (GPIOB)
-#define DCMI_D6_PORT            (GPIOE)
-#define DCMI_D7_PORT            (GPIOE)
-
-#define DCMI_HSYNC_PIN          (GPIO_PIN_4)
-#define DCMI_VSYNC_PIN          (GPIO_PIN_7)
-#define DCMI_PXCLK_PIN          (GPIO_PIN_6)
-
-#define DCMI_HSYNC_PORT         (GPIOA)
-#define DCMI_VSYNC_PORT         (GPIOB)
-#define DCMI_PXCLK_PORT         (GPIOA)
-
-#define DCMI_RESET_LOW()        HAL_GPIO_WritePin(DCMI_RESET_PORT, DCMI_RESET_PIN, GPIO_PIN_RESET)
-#define DCMI_RESET_HIGH()       HAL_GPIO_WritePin(DCMI_RESET_PORT, DCMI_RESET_PIN, GPIO_PIN_SET)
-
-#define DCMI_PWDN_LOW()         HAL_GPIO_WritePin(DCMI_PWDN_PORT, DCMI_PWDN_PIN, GPIO_PIN_RESET)
-#define DCMI_PWDN_HIGH()        HAL_GPIO_WritePin(DCMI_PWDN_PORT, DCMI_PWDN_PIN, GPIO_PIN_SET)
-
-#define DCMI_FREX_LOW()         HAL_GPIO_WritePin(DCMI_FREX_PORT, DCMI_FREX_PIN, GPIO_PIN_RESET)
-#define DCMI_FREX_HIGH()        HAL_GPIO_WritePin(DCMI_FREX_PORT, DCMI_FREX_PIN, GPIO_PIN_SET)
-
-#define DCMI_EXPST_LOW()        HAL_GPIO_WritePin(DCMI_EXPST_PORT, DCMI_EXPST_PIN, GPIO_PIN_RESET)
-#define DCMI_EXPST_HIGH()       HAL_GPIO_WritePin(DCMI_EXPST_PORT, DCMI_EXPST_PIN, GPIO_PIN_SET)
-
-#define DCMI_FSIN_LOW()         HAL_GPIO_WritePin(DCMI_FSIN_PORT, DCMI_FSIN_PIN, GPIO_PIN_RESET)
-#define DCMI_FSIN_HIGH()        HAL_GPIO_WritePin(DCMI_FSIN_PORT, DCMI_FSIN_PIN, GPIO_PIN_SET)
-
-#define DCMI_VSYNC_IRQN         EXTI9_5_IRQn
-#define DCMI_VSYNC_IRQ_LINE     (7)
 #endif
 
 #endif //__OMV_BOARDCONFIG_H__

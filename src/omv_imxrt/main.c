@@ -64,10 +64,16 @@
 #include "extint.h"
 #include "servo.h"
 
-//#include "sensor.h"
+#include "sensor.h"
+#include "usbdbg.h"
+#include "sdram.h"
+#include "fb_alloc.h"
+#include "ff_wrapper.h"
+
+#include "sensor.h"
 #include "usbdbg.h"
 //#include "wifidbg.h"
-//#include "sdram.h"
+#include "sdram.h"
 #include "fb_alloc.h"
 #include "ff_wrapper.h"
 
@@ -78,8 +84,9 @@
 #include "py_tv.h"
 
 #include "framebuffer.h"
-
 #include "ini.h"
+#include "overlay_manager.h"
+
 #else
 #include <stdio.h>
 #include <stdbool.h>
@@ -963,6 +970,8 @@ soft_reset:
      uart_init0();
      usbdbg_init();
      pyb_usb_init0();
+
+     sensor_init0();
 
  	/*--------------------------------------------------*
  	 *  	  	Init/Mount FlashFileSystem				*

@@ -1,10 +1,16 @@
 # Sources
+
+
+ifeq ($(TARGET), OPENMVRT_SEEED)
+
+else
 SRC_S = src/st/$(STARTUP).s
 SRC_C = src/st/system_stm32fxxx.c
+endif
 
-SRC_C  += $(wildcard src/dsp/CommonTables/*.c)
-SRC_C  += $(wildcard src/dsp/FastMathFunctions/*.c)
-SRC_C  += $(wildcard src/dsp/MatrixFunctions/*.c)
+SRC_C  += src/dsp/CommonTables/CommonTables.c			#includes All CommonTables Files in the Folder
+SRC_C  += src/dsp/FastMathFunctions/FastMathFunctions.c #includes All FastMathFunctions Files in the Folder
+SRC_C  += src/dsp/MatrixFunctions/MatrixFunctions.c		#includes All MatrixFunctions Files in the Folder
 SRC_C  += $(wildcard src/nn/ActivationFunctions/*.c)
 SRC_C  += $(wildcard src/nn/ConvolutionFunctions/*.c)
 SRC_C  += $(wildcard src/nn/FullyConnectedFunctions/*.c)

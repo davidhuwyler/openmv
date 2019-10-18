@@ -11,9 +11,11 @@ SRCS += $(addprefix ,   \
 	usbdbg.c            \
 	cambus.c            \
 	ov9650.c            \
+	ov5640.c \
 	ov2640.c            \
 	ov7725.c            \
 	mt9v034.c           \
+	lepton.c \
 	sensor.c            \
 	mutex.c             \
    )
@@ -84,13 +86,14 @@ SRCS += $(addprefix py/, \
 	py_omv.c				\
 	py_helper.c             \
 	py_sensor.c             \
+	py_lcd.c            	\
 	py_image.c              \
 	py_time.c               \
 	py_gif.c                \
 	py_mjpeg.c              \
    )
-#   	py_lcd.c            \
-	py_fir.c                \
+
+#	py_fir.c                \
 	py_winc.c               \
 	py_cpufreq.c            \
 	
