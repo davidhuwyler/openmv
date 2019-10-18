@@ -157,137 +157,12 @@
 #include "ini.h"
 #endif
 
-#ifdef OPENMVRT_SEEED
 pyb_thread_t pyb_thread_main;
 static fs_user_mount_t fs_user_mount_flash;
 
 int errno;
 long long _vfs_buf[1024 / 8];
 static fs_user_mount_t *vfs_fat = (fs_user_mount_t *) _vfs_buf;
-
-#else
-int errno;
-extern char _vfs_buf;
-static fs_user_mount_t *vfs_fat = (fs_user_mount_t *) &_vfs_buf;
-pyb_thread_t pyb_thread_main;
-#endif
-
-#ifdef OPENMVRT_SEEED
-
-#else
-static const char fresh_main_py[] =
-"# main.py -- put your code here!\n"
-"import pyb, time\n"
-"led = pyb.LED(3)\n"
-"usb = pyb.USB_VCP()\n"
-"while (usb.isconnected()==False):\n"
-"   led.on()\n"
-"   time.sleep(150)\n"
-"   led.off()\n"
-"   time.sleep(100)\n"
-"   led.on()\n"
-"   time.sleep(150)\n"
-"   led.off()\n"
-"   time.sleep(600)\n"
-;
-
-static const char fresh_readme_txt[] =
-"Thank you for supporting the OpenMV project!\r\n"
-"\r\n"
-"To download the IDE, please visit:\r\n"
-"https://openmv.io/pages/download\r\n"
-"\r\n"
-"For tutorials and documentation, please visit:\r\n"
-"http://docs.openmv.io/\r\n"
-"\r\n"
-"For technical support and projects, please visit the forums:\r\n"
-"http://forums.openmv.io/\r\n"
-"\r\n"
-"Please use github to report bugs and issues:\r\n"
-"https://github.com/openmv/openmv\r\n"
-;
-
-#ifdef OPENMV1
-static const char fresh_selftest_py[] ="";
-#else
-static const char fresh_selftest_py[] =
-"import sensor, time, pyb\n"
-"\n"
-"def test_int_adc():\n"
-"    adc  = pyb.ADCAll(12)\n"
-"    # Test VBAT\n"
-"    vbat = adc.read_core_vbat()\n"
-"    vbat_diff = abs(vbat-3.3)\n"
-"    if (vbat_diff > 0.1):\n"
-"        raise Exception('INTERNAL ADC TEST FAILED VBAT=%fv'%vbat)\n"
-"\n"
-"    # Test VREF\n"
-"    vref = adc.read_core_vref()\n"
-"    vref_diff = abs(vref-1.2)\n"
-"    if (vref_diff > 0.1):\n"
-"        raise Exception('INTERNAL ADC TEST FAILED VREF=%fv'%vref)\n"
-"    adc = None\n"
-"    print('INTERNAL ADC TEST PASSED...')\n"
-"\n"
-"def test_color_bars():\n"
-"    sensor.reset()\n"
-"    # Set sensor settings\n"
-"    sensor.set_brightness(0)\n"
-"    sensor.set_saturation(3)\n"
-"    sensor.set_gainceiling(8)\n"
-"    sensor.set_contrast(2)\n"
-"\n"
-"    # Set sensor pixel format\n"
-"    sensor.set_framesize(sensor.QVGA)\n"
-"    sensor.set_pixformat(sensor.RGB565)\n"
-"\n"
-"    # Enable colorbar test mode\n"
-"    sensor.set_colorbar(True)\n"
-"\n"
-"    # Skip a few frames to allow the sensor settle down\n"
-"    for i in range(0, 100):\n"
-"        image = sensor.snapshot()\n"
-"\n"
-"    #color bars thresholds\n"
-"    t = [lambda r, g, b: r < 70  and g < 70  and b < 70,   # Black\n"
-"         lambda r, g, b: r < 70  and g < 70  and b > 200,  # Blue\n"
-"         lambda r, g, b: r > 200 and g < 70  and b < 70,   # Red\n"
-"         lambda r, g, b: r > 200 and g < 70  and b > 200,  # Purple\n"
-"         lambda r, g, b: r < 70  and g > 200 and b < 70,   # Green\n"
-"         lambda r, g, b: r < 70  and g > 200 and b > 200,  # Aqua\n"
-"         lambda r, g, b: r > 200 and g > 200 and b < 70,   # Yellow\n"
-"         lambda r, g, b: r > 200 and g > 200 and b > 200]  # White\n"
-"\n"
-"    # color bars are inverted for OV7725\n"
-"    if (sensor.get_id() == sensor.OV7725):\n"
-"        t = t[::-1]\n"
-"\n"
-"    #320x240 image with 8 color bars each one is approx 40 pixels.\n"
-"    #we start from the center of the frame buffer, and average the\n"
-"    #values of 10 sample pixels from the center of each color bar.\n"
-"    for i in range(0, 8):\n"
-"        avg = (0, 0, 0)\n"
-"        idx = 40*i+20 #center of colorbars\n"
-"        for off in range(0, 10): #avg 10 pixels\n"
-"            rgb = image.get_pixel(idx+off, 120)\n"
-"            avg = tuple(map(sum, zip(avg, rgb)))\n"
-"\n"
-"        if not t[i](avg[0]/10, avg[1]/10, avg[2]/10):\n"
-"            raise Exception('COLOR BARS TEST FAILED.'\n"
-"            'BAR#(%d): RGB(%d,%d,%d)'%(i+1, avg[0]/10, avg[1]/10, avg[2]/10))\n"
-"\n"
-"    print('COLOR BARS TEST PASSED...')\n"
-"\n"
-"if __name__ == '__main__':\n"
-"    print('')\n"
-"    test_int_adc()\n"
-"    if sensor.get_id() == sensor.OV7725: test_color_bars()\n"
-"\n"
-;
-#endif
-#endif
-
-
 
 void flash_error(int n) {
 
@@ -304,11 +179,7 @@ void flash_error(int n) {
 }
 
 
-
 void NORETURN __fatal_error(const char *msg) {
-#ifdef OPENMVRT_SEEED
-	for (;;) {}
-#else
     FIL fp;
     if (f_open(&vfs_fat->fatfs, &fp, "ERROR.LOG",
                FA_WRITE|FA_CREATE_ALWAYS) == FR_OK) {
@@ -325,8 +196,6 @@ void NORETURN __fatal_error(const char *msg) {
         for (volatile uint delay = 0; delay < 500000; delay++) {
         }
     }
-#endif
-
 }
 
 void nlr_jump_fail(void *val) {
@@ -343,20 +212,13 @@ void __attribute__((weak))
 }
 #endif
 
-
-
-
 void f_touch(const char *path)
 {
-#ifdef OPENMVRT_SEEED
-
-#else
     FIL fp;
     if (f_stat(&vfs_fat->fatfs, path, NULL) != FR_OK) {
         f_open(&vfs_fat->fatfs, &fp, path, FA_WRITE | FA_CREATE_ALWAYS);
         f_close(&fp);
     }
-#endif
 }
 
 void make_flash_fs()
@@ -470,7 +332,7 @@ int ini_handler_callback(void *user, const char *section, const char *name, cons
     #undef MATCH
 }
 
-#ifdef OPENMVRT_SEEED
+
 FRESULT apply_settings(const char *path)
 {
     nlr_buf_t nlr;
@@ -485,7 +347,7 @@ FRESULT apply_settings(const char *path)
 
     return f_res;
 }
-#endif
+
 
 FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
 {
@@ -547,9 +409,7 @@ FRESULT exec_boot_script(const char *path, bool selftest, bool interruptible)
     return f_res;
 }
 
-#ifdef OPENMVRT_SEEED
-
-extern uint32_t __StackTop; //TODO Dave: Why once * and once not?
+extern uint32_t __StackTop;
 extern uint32_t __StackSize;
 extern uint32_t _heap_start;
 extern uint32_t _heap_end;
@@ -901,11 +761,9 @@ STATIC bool init_sdcard_fs(bool first_soft_reset) {
 #endif
 
 
-#endif
-
 int main(void)
 {
-	int retCode = 0;
+    bool first_soft_reset = true;
     HAL_Init();
 
     // Basic sub-system init
@@ -915,9 +773,6 @@ int main(void)
     pendsv_init();
     led_init();
 
-    bool first_soft_reset = true;
-
-	retCode = true;
 soft_reset:
 	{
 		//Flash Magenta LED 3times at Startup
@@ -967,11 +822,29 @@ soft_reset:
      switch_init0();
      readline_init0();
      pin_init0();
+     spi_init0();
      uart_init0();
      usbdbg_init();
      pyb_usb_init0();
-
      sensor_init0();
+
+
+     // Define MICROPY_HW_UART_REPL to be PYB_UART_6 and define
+     // MICROPY_HW_UART_REPL_BAUD in your mpconfigboard.h file if you want a
+     // REPL on a hardware UART as well as on USB VCP
+ #if defined(MICROPY_HW_UART_REPL)
+     {
+
+         mp_obj_t args[2] = {
+             MP_OBJ_NEW_SMALL_INT(MICROPY_HW_UART_REPL),
+             MP_OBJ_NEW_SMALL_INT(115200),
+         };
+         MP_STATE_PORT(pyb_stdio_uart) = pyb_uart_type.make_new((mp_obj_t)&pyb_uart_type, MP_ARRAY_SIZE(args), 0, args);
+     }
+ #else
+     MP_STATE_PORT(pyb_stdio_uart) = NULL;
+ #endif
+
 
  	/*--------------------------------------------------*
  	 *  	  	Init/Mount FlashFileSystem				*
@@ -1056,19 +929,6 @@ soft_reset:
 	int ret = 0;
 	PRINTF("Enter OpenMV main\r\n");
 	// SCnSCB->ACTLR |= SCnSCB_ACTLR_DISDEFWBUF_Msk;
-/*
-	extint_init0();
-    timer_init0();
-    can_init0();
-    rng_init0();
-    i2c_init0();
-    spi_init0();
-    uart_init0();
-    MP_STATE_PORT(pyb_stdio_uart) = NULL; // need to zero
-    dac_init();
-    pyb_usb_init0();
-    sensor_init0();
-*/
     file_buffer_init0();
 
  MainLoop:

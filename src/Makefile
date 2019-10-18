@@ -521,6 +521,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	usrsw.o \
 	isr.o \
 	irq.o \
+	i2c.o \
 	uniqueID.o \
 	rpm.o \
 	rng.o \
@@ -531,6 +532,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/,\
 	led.o \
 	storage.o \
 	sdcard.o \
+	spi.o \
 	help.o 					\
 	pin.o                   \
 	pin_defs_mcu.o \
