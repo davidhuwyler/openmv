@@ -37,15 +37,11 @@ CMSIS_DIR=cmsis
 STUSB_DIR=stusb
 MICROPY_DIR=micropython
 OMV_DIR=omv
-OMV_IMXRT_DIR=$(OMV_DIR)/omv_imxrt_port
 LEPTON_DIR=lepton
 MLX_DIR=mlx
 WINC1500_DIR=winc1500
 BOOTLDR_DIR=bootloader
 UVC_DIR=uvc
-
-# Additional qstr definitions for OpenMV
-OMV_QSTR_DEFS = $(TOP_DIR)/$(OMV_DIR)/py/qstrdefsomv.h
 
 # Target
 TARGET ?= OPENMVRT_SEEED
@@ -57,6 +53,9 @@ OMV_DIR=omv_imxrt
 else
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/boards/$(TARGET)/
 endif
+
+# Additional qstr definitions for OpenMV
+OMV_QSTR_DEFS = $(TOP_DIR)/$(OMV_DIR)/py/qstrdefsomv.h
 
 FW_DIR=$(TOP_DIR)/../firmware/$(TARGET)
 OMV_BOARD_CONFIG_DIR=$(TOP_DIR)/$(OMV_DIR)/boards/$(TARGET)/
@@ -294,7 +293,14 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/, \
 	ini.o                                   \
 	framebuffer.o                           \
 	array.o                                 \
-	usbdbg.o   \
+	usbdbg.o   								\
+	cambus.o                                \
+	ov9650.o                                \
+	ov2640.o                                \
+	ov7725.o                                \
+	ov5640.o                                \
+	mt9v034.o                               \
+	lepton.o                                \
 	sensor.o                                \
 	mutex.o                                 \
 	)
@@ -444,6 +450,7 @@ ifeq ($(TARGET), OPENMVRT_SEEED)
 FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
 	py_helper.o                             \
 	py_omv.o                                \
+	py_sensor.o                             \
 	py_time.o                               \
 	py_image.o                              \
 	)
@@ -848,7 +855,7 @@ endif
 
 FIRMWARE_OBJS:
 ifeq ($(TARGET), OPENMVRT_SEEED)
-#	$(MAKE)  -C $(CMSIS_DIR)                BUILD=$(BUILD)/$(CMSIS_DIR)    CFLAGS="$(CFLAGS) -fno-strict-aliasing -MMD"
+	$(MAKE)  -C $(CMSIS_DIR)                BUILD=$(BUILD)/$(CMSIS_DIR)    CFLAGS="$(CFLAGS) -fno-strict-aliasing -MMD"
 #	$(MAKE)  -C $(STHAL_DIR)                BUILD=$(BUILD)/$(STHAL_DIR)    CFLAGS="$(CFLAGS) -MMD"
 	$(MAKE)  -C $(MICROPY_DIR)/ports/imxrt  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)
 #	$(MAKE)  -C $(MICROPY_DIR)/ports/stm32  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)

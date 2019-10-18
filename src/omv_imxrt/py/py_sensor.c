@@ -20,7 +20,11 @@
 #include "framebuffer.h"
 #include "systick.h"
 
-extern sensor_t sensor;
+extern sensor_t s_sensor;
+
+__WEAK int sensor_shutdown(int enable) {
+	return 1;
+}
 
 static mp_obj_t py_sensor_reset() {
     PY_ASSERT_FALSE_MSG(sensor_reset() != 0, "Reset Failed");
@@ -46,7 +50,7 @@ static mp_obj_t py_sensor_snapshot(uint n_args, const mp_obj_t *args, mp_map_t *
     // Snapshot image
     mp_obj_t image = py_image(0, 0, 0, 0);
 
-    if (sensor.snapshot(&sensor, (image_t*) py_image_cobj(image), NULL)==-1) {
+    if (s_sensor.snapshot(&s_sensor, (image_t*) py_image_cobj(image), NULL)==-1) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Sensor Timeout!!"));
         return mp_const_false;
     }
@@ -67,7 +71,7 @@ static mp_obj_t py_sensor_skip_frames(uint n_args, const mp_obj_t *args, mp_map_
 
     if (!n_args) {
         while ((systick_current_millis() - millis) < time) { // 32-bit math handles wrap arrounds...
-            if (sensor.snapshot(&sensor, NULL, NULL) == -1) {
+            if (s_sensor.snapshot(&s_sensor, NULL, NULL) == -1) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Sensor Timeout!!"));
             }
         }
@@ -77,7 +81,7 @@ static mp_obj_t py_sensor_skip_frames(uint n_args, const mp_obj_t *args, mp_map_
                 break;
             }
 
-            if (sensor.snapshot(&sensor, NULL, NULL) == -1) {
+            if (s_sensor.snapshot(&s_sensor, NULL, NULL) == -1) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Sensor Timeout!!"));
             }
         }
@@ -88,12 +92,12 @@ static mp_obj_t py_sensor_skip_frames(uint n_args, const mp_obj_t *args, mp_map_
 
 static mp_obj_t py_sensor_width()
 {
-    return mp_obj_new_int(resolution[sensor.framesize][0]);
+    return mp_obj_new_int(resolution[s_sensor.framesize][0]);
 }
 
 static mp_obj_t py_sensor_height()
 {
-    return mp_obj_new_int(resolution[sensor.framesize][1]);
+    return mp_obj_new_int(resolution[s_sensor.framesize][1]);
 }
 
 static mp_obj_t py_sensor_get_fb()
@@ -205,8 +209,8 @@ static mp_obj_t py_sensor_set_framesize(mp_obj_t framesize) {
 
 static mp_obj_t py_sensor_set_windowing(mp_obj_t roi_obj) {
     int x, y, w, h;
-    int res_w = resolution[sensor.framesize][0];
-    int res_h = resolution[sensor.framesize][1];
+    int res_w = resolution[s_sensor.framesize][0];
+    int res_h = resolution[s_sensor.framesize][1];
 
     mp_obj_t *array;
     mp_uint_t array_len;

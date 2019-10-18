@@ -45,7 +45,7 @@
                             							
                             <targetPlatform binaryParser="org.eclipse.cdt.core.ELF;org.eclipse.cdt.core.GNU_ELF" id="com.crt.advproject.platform.exe.debug.929210979" name="ARM-based MCU (Debug)"/>
                             							
-                            <builder buildPath="/home/dave/OpenMV_Repo/openmv/src" id="com.crt.advproject.builder.exe.debug.473892474" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder"/>
+                            <builder arguments="" buildPath="/home/dave/OpenMV_Repo/openmv/src" id="com.crt.advproject.builder.exe.debug.473892474" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder"/>
                             						
                         </toolChain>
                         					
