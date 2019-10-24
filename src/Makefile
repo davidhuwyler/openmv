@@ -121,6 +121,7 @@ NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/usb/device/source/khci/
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/osa/
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/sdmmc/
 NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/video/
+NXP_CFLAGS += -I$(TOP_DIR)/$(NXPHAL_DIR)/xip/
 
 MP_CFLAGS += -I$(BUILD)/$(MICROPY_DIR)/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/
@@ -208,7 +209,7 @@ ifeq ($(TARGET), OPENMVRT_SEEED)
 # Linker Flags
 LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
           -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
-          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld.S
+          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S
 
 # Linker Flags
 BOOTLDR_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
@@ -270,6 +271,7 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/component/uart/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/video/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/osa/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/*.o)
+FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/xip/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/port_usdhc_irq/*.o)
 #FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/flegftl/*.o)
 
@@ -880,7 +882,7 @@ endif
 $(FIRMWARE): FIRMWARE_OBJS
 ifeq ($(TARGET), OPENMVRT_SEEED)
 	$(ECHO) "Create the Firmware"
-	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OPENMVRT_SEEED_LD_DIR)/MIMXRT1052xxxxB_Project_Reference_Debug.ld.S > $(BUILD)/MIMXRT1052.lds
+	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S > $(BUILD)/MIMXRT1052.lds
 	$(ECHO) "Make the elf file..."
 	$(CC) $(LDFLAGS) $(FIRM_OBJ) -o $(FW_DIR)/$(FIRMWARE).elf -lgcc
 	$(ECHO) "Make the bin file..."
