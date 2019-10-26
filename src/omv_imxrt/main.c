@@ -851,7 +851,7 @@ soft_reset:
  	 *--------------------------------------------------*/
      // Create it if needed, mount in on /flash, and set it as current dir.
  	bool mounted_flash;
- 	#if !defined(XIP_EXTERNAL_FLASH) && (MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
+ 	#if (MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
      mounted_flash = init_flash_fs(reset_mode);
  	#else
  	mounted_flash = 0;

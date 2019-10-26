@@ -103,17 +103,12 @@
 #define OMV_DMA_MEMORY      CCM     // Misc DMA buffers
 #define OMV_STACK_SIZE      (8 * 1024)
 
-#if defined(EVK1050_60_QSPI)
-#define OMV_FB_SIZE         (601 * 1024)  // FB memory: header + VGA/GS image
-#define OMV_FB_ALLOC_SIZE   (323 * 1024)   // minimum fb alloc size
-#define OMV_JPEG_BUF_SIZE   (48 * 1024) // IDE JPEG buffer (header + data).
-#else
-#define OMV_FB_SIZE         (400k)  // FB memory: header + VGA/GS image
-#define OMV_FB_ALLOC_SIZE   (96k)   // minimum fb alloc size
+#define OMV_FB_SIZE         (1000 * 1024)  // FB memory: header + VGA/GS image
+#define OMV_FB_ALLOC_SIZE   (100 * 1024)   // minimum fb alloc size
 #define OMV_JPEG_BUF_SIZE   (32 * 1024) // IDE JPEG buffer (header + data).
-#endif
+
 // RAW buffer size
-#define OMV_RAW_BUF_SIZE        (OMV_FB_SIZE)
+#define OMV_RAW_BUF_SIZE    ((uint32_t)1024000)
 
 #ifndef MCU_SERIES_RT105
 #define OMV_LINE_BUF_SIZE   (3K)    // Image line buffer round(640 * 2BPP * 2 buffers).

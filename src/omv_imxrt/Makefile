@@ -72,13 +72,13 @@ SRCS += $(addprefix img/,   \
 	shadow_removal.c		\
 	edge.c                  \
 	hog.c                   \
+	jpeg.c                  \
    )
 # 	morph.c                 \
 	midpoint.c              \
 	mean.c                  \
 	mode.c                  \
 	median.c                \
-	jpeg.c                  \
 	lenet.c                 \
 	lenet_model_num.c       \
 	
@@ -91,6 +91,7 @@ SRCS += $(addprefix py/, \
 	py_time.c               \
 	py_gif.c                \
 	py_mjpeg.c              \
+	py_nn.c \
    )
 
 #	py_fir.c                \
