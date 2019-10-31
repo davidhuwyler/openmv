@@ -317,6 +317,10 @@ void sensor_gpio_init(void)
     };
     GPIO_PinInit(DCMI_RESET_PORT, DCMI_RESET_PIN, &config);
 	GPIO_PinInit(DCMI_PWDN_PORT, DCMI_PWDN_PIN, &config);
+
+	//DEBUG PIN EMC_41 (Name:ENET_MDIO)
+	GPIO_PinInit(DEBUG_PIN_PORT, DEBUG_PIN, &config);
+	DEBUG_PIN_LOW();
 }
 
 
@@ -802,6 +806,20 @@ int sensor_init()
 
 	CsiFragModeInit();
 
+	/* Set PixelClock. */
+	//2<<9 = Derive Clock from USBPLL:480Mhz/4=120Mhz
+	//0<<9 = Derive Clock from OSC_CLK:24Mhz
+	//(2-1)<<11 = divide by 2
+	//(8-1)<<11 = divide by 8
+	//sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
+	sensor_set_framerate(0x80000000 | (2<<9|(8-1)<<11)); //15Mhz PixClock
+
+	s_sensor.isWindowing = 0;
+	s_sensor.wndH = s_sensor.fb_h;
+	s_sensor.wndW = s_sensor.fb_w;
+	s_sensor.wndX = s_sensor.wndY = 0;
+
+
     return 0;
 }
 
@@ -816,17 +834,7 @@ int sensor_reset()
 	#ifndef NO_LCD_MONITOR
 	LCDMonitor_InitFB();
 	#endif
-	s_sensor.isWindowing = 0;
-	s_sensor.wndH = s_sensor.fb_h;
-	s_sensor.wndW = s_sensor.fb_w;
-	s_sensor.wndX = s_sensor.wndY = 0;	
 
-	//sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
-	sensor_set_framerate(0x80000000 | (2<<9|(8-1)<<11)); //15Mhz PixClock
-	//2<<9 = Derive Clock from USBPLL:480Mhz/4=120Mhz
-	//0<<9 = Derive Clock from OSC_CLK:24Mhz
-	//(2-1)<<11 = divide by 2
-	//(8-1)<<11 = divide by 8
 
     // Reset the sesnor state
 	s_sensor.sde          = 0xFF;
@@ -1387,8 +1395,6 @@ void LCDMonitor_Update(uint32_t fbNdx)
 // overwrite image pixels before they are compressed.
 int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb)
 {
- //   uint32_t activeADDR;//, length;
-  //  uint32_t inactiveADDR;
   	sensor = sensor , streaming_cb = streaming_cb;	// keep compatible with original openMV
     sensor_check_bufsize();
 
@@ -1410,85 +1416,26 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
     }
 
 	static uint8_t n;
-    {
-		uint32_t t1, t2;
-		if (JPEG_FB()->enabled) {
-			
-			t1 = HAL_GetTick();
-			fb_update_jpeg_buffer();
-			t2 = HAL_GetTick() - t1;
-			t2 = t2;
-		}
-		#ifndef NO_LCD_MONITOR // #ifdef __CC_ARM
-		LCDMonitor_Update(n);
-		#endif
-		#if 1
-		
-		CAMERA_TAKE_SNAPSHOT();
-		if (!s_isEnUsbIrqForSnapshot)
-			NVIC_DisableIRQ(USB_OTG1_IRQn);
-		CAMERA_WAIT_FOR_SNAPSHOT();
-		if (!s_isEnUsbIrqForSnapshot)
-			NVIC_EnableIRQ(USB_OTG1_IRQn);
-		#else
-		/*
-		uint32_t i;
-		uint16_t *p = (uint16_t*) fb_framebuffer->pixels;
-		
-		uint32_t j;		
-		for (i=0; i<s_sensor.fb_h; i++) {
-			for (j=0; j<s_sensor.fb_w; j++) {
-				if (i > 120)
-					p[0] = 0xBeef; //(n & 0x1F) <<0;
-				else
-					p[0] = 0xDead;
-				p++;
-			}
-		}
-		*/
-		s_irq.nextDmaBulk = 0;
-		s_pCSI->CSICR18 |= CSI_CSICR18_CSI_ENABLE_MASK;
-		#endif
-		
-		n++;
 
-		/*
-		for (i=0, p = (uint16_t*) fb_framebuffer->pixels; i<s_sensor.fb_h; i++) {
-			PreprocessOneLine((uint32_t)p, i);
-			p += s_sensor.fb_w;
-		}
-		*/
-    }
+	if (JPEG_FB()->enabled) {
+		DEBUG_PIN_HIGH();
+		fb_update_jpeg_buffer();
+		DEBUG_PIN_LOW();
+	}
+
+	CAMERA_TAKE_SNAPSHOT();
+	//if (!s_isEnUsbIrqForSnapshot)
+		//NVIC_DisableIRQ(USB_OTG1_IRQn);
+	CAMERA_WAIT_FOR_SNAPSHOT();
+	//if (!s_isEnUsbIrqForSnapshot)
+		//NVIC_EnableIRQ(USB_OTG1_IRQn);
+
+	n++;
+
+
 	if (pImg) {
 		pImg->w = MAIN_FB()->w , pImg->h = MAIN_FB()->h , pImg->bpp = MAIN_FB()->bpp;
 		pImg->pixels = (uint8_t*) MAIN_FB()->pixels;		
 	}
     return 0;
 }
-
-#if 0
-void CSI_OmvTransferHandleIRQ(CSI_Type *base, csi_handle_t *handle)
-{
-    uint32_t csisr = base->CSISR;
-
-    /* Clear the error flags. */
-    base->CSISR = csisr;
-	CSI_Stop(base);
-	handle->transferOnGoing = false;
-    if (handle->callback)
-    {
-        handle->callback(base, handle, kStatus_CSI_FrameDone, handle->userData);
-    }
-	handle->queueDrvWriteIdx = 0;
-	handle->queueDrvReadIdx = 0;
-	handle->queueUserReadIdx = 0;
-	handle->queueUserWriteIdx = 0;
-	handle->activeBufferNum = 0;
-	s_isOmvSensorSnapshotReady = 1;	
-/* Add for ARM errata 838869, affects Cortex-M4, Cortex-M4F Store immediate overlapping
-  exception return operation might vector to incorrect interrupt */
-#if defined __CORTEX_M && (__CORTEX_M >= 4U)
-	__DSB();
-#endif
-}
-#endif

@@ -154,6 +154,14 @@ extern const pin_obj_t 			pin_AD_B1_03;
 #define DCMI_PWDN_LOW()         GPIO_PinWrite(DCMI_PWDN_PORT, DCMI_PWDN_PIN, 0);
 #define DCMI_PWDN_HIGH()        GPIO_PinWrite(DCMI_PWDN_PORT, DCMI_PWDN_PIN, 1);
 
+/* DebugPin ENET_MDIO */
+extern const pin_obj_t 			pin_EMC_41;
+#define DEBUG_PIN_PINOBJ		pin_EMC_41
+#define DEBUG_PIN	            (DEBUG_PIN_PINOBJ.pin)
+#define DEBUG_PIN_PORT          (DEBUG_PIN_PINOBJ.gpio)
+#define DEBUG_PIN_LOW()         GPIO_PinWrite(DEBUG_PIN_PORT, DEBUG_PIN, 0);
+#define DEBUG_PIN_HIGH()        GPIO_PinWrite(DEBUG_PIN_PORT, DEBUG_PIN, 1);
+
 #endif
 
 #endif //__OMV_BOARDCONFIG_H__
