@@ -30,3 +30,6 @@ usr/openmv.config
 ######################
 ml/cmsisnn/caffe
 
+# firmware #
+######################
+firmware/
