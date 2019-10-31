@@ -1424,17 +1424,12 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 		#endif
 		#if 1
 		
-		t1 = HAL_GetTick();
 		CAMERA_TAKE_SNAPSHOT();
 		if (!s_isEnUsbIrqForSnapshot)
 			NVIC_DisableIRQ(USB_OTG1_IRQn);
 		CAMERA_WAIT_FOR_SNAPSHOT();
 		if (!s_isEnUsbIrqForSnapshot)
 			NVIC_EnableIRQ(USB_OTG1_IRQn);
-
-		t2 = HAL_GetTick() - t1;
-		t2 = t2;
-
 		#else
 		/*
 		uint32_t i;
