@@ -6,6 +6,7 @@
 *.hex
 *.dis
 *.pyc
+*.dfu
 
 # Packages #
 ############
