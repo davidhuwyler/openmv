@@ -39,6 +39,10 @@
 #define USE_LineBuffer
 //-----
 
+#ifndef RAM_CODE
+#define RAM_CODE __attribute__((section(".ramfunc.$SRAM_ITC")))
+//#define RAM_CODE
+#endif
 
 #define OV_CHIP_ID      (0x0A)
 #define ON_CHIP_ID      (0x00)
@@ -467,12 +471,6 @@ typedef union {
 	
 }YUV64bit_t;
 
-
-#ifdef __CC_ARM
-#define RAM_CODE __attribute__((section(".ram_code")))
-#else
-#define RAM_CODE
-#endif
 
 #ifdef __CC_ARM
 #define ARMCC_ASM_FUNC	__asm
@@ -1426,12 +1424,17 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 		#endif
 		#if 1
 		
+		t1 = HAL_GetTick();
 		CAMERA_TAKE_SNAPSHOT();
 		if (!s_isEnUsbIrqForSnapshot)
 			NVIC_DisableIRQ(USB_OTG1_IRQn);
 		CAMERA_WAIT_FOR_SNAPSHOT();
 		if (!s_isEnUsbIrqForSnapshot)
 			NVIC_EnableIRQ(USB_OTG1_IRQn);
+
+		t2 = HAL_GetTick() - t1;
+		t2 = t2;
+
 		#else
 		/*
 		uint32_t i;

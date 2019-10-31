@@ -23,6 +23,11 @@
 
 #define TIME_JPEG   (0)
 
+#ifndef RAM_CODE
+#define RAM_CODE __attribute__((section(".ramfunc.$SRAM_ITC")))
+//#define RAM_CODE
+#endif
+
 #if defined(OMV_HARDWARE_JPEG)
 
 #define MCU_W                       (8)
@@ -765,7 +770,7 @@ void jpeg_get_mcu(image_t *img, int mcu_w, int mcu_h, int x_offs, int y_offs, in
     }
 }
 
-bool jpeg_compress(image_t *src, image_t *dst, int quality, bool realloc)
+RAM_CODE bool jpeg_compress(image_t *src, image_t *dst, int quality, bool realloc)
 {
     int DCY=0, DCU=0, DCV=0;
     #if (TIME_JPEG==1)
