@@ -402,9 +402,6 @@ void usbdbg_control(void *buffer, uint8_t request, uint32_t length)
             break;
 
         case USBDBG_FB_ENABLE: {
-			#ifdef OMV_MPY_ONLY
-
-			#else
 				int16_t enable = *((int16_t*)buffer);
 				#ifdef DUMP_RAW
 				enable = 0;
@@ -416,7 +413,6 @@ void usbdbg_control(void *buffer, uint8_t request, uint32_t length)
 					// If the IDE is not the current lock owner, this operation is ignored.
 					mutex_unlock(&JPEG_FB()->lock, MUTEX_TID_IDE);
 				}
-			#endif
             cmd = USBDBG_NONE;
             break;
         }
@@ -435,14 +431,13 @@ void usbdbg_control(void *buffer, uint8_t request, uint32_t length)
 
 void usbdbg_connect(void)
 {
+	//JPEG_FB()->enabled = 1;
 	// slow down the sensor to avoid tearing effect, when executing from FlexSPI
 	// sensor_set_framerate(2<<9 | 2<<11);
 }
 void usbdbg_disconnect(void) {
-	#ifndef OMV_MPY_ONLY
-	JPEG_FB()->enabled = 0;
+	//JPEG_FB()->enabled = 0;
 	mutex_unlock(&JPEG_FB()->lock, MUTEX_TID_IDE);
-	#endif
 	// sensor_set_framerate(2<<9 | 1<<11);
 }
 

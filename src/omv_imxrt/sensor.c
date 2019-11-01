@@ -773,7 +773,7 @@ int sensor_init()
     }
     // Clear fb_enabled flag
     // This is executed only once to initialize the FB enabled flag.
-   // JPEG_FB()->enabled = 0;
+   JPEG_FB()->enabled = 0;
    // dcmi_config(); replace this func by the below sentences
     
     
@@ -1416,19 +1416,19 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
     }
 
 	static uint8_t n;
-
+	DEBUG_PIN_HIGH();
 	if (JPEG_FB()->enabled) {
-		DEBUG_PIN_HIGH();
 		fb_update_jpeg_buffer();
-		DEBUG_PIN_LOW();
 	}
 
+	DEBUG_PIN_LOW();
 	CAMERA_TAKE_SNAPSHOT();
-	//if (!s_isEnUsbIrqForSnapshot)
-		//NVIC_DisableIRQ(USB_OTG1_IRQn);
+	HAL_Delay(3);
+	if (!s_isEnUsbIrqForSnapshot)
+		NVIC_DisableIRQ(USB_OTG1_IRQn);
 	CAMERA_WAIT_FOR_SNAPSHOT();
-	//if (!s_isEnUsbIrqForSnapshot)
-		//NVIC_EnableIRQ(USB_OTG1_IRQn);
+	if (!s_isEnUsbIrqForSnapshot)
+		NVIC_EnableIRQ(USB_OTG1_IRQn);
 
 	n++;
 
