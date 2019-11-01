@@ -826,7 +826,8 @@ soft_reset:
      uart_init0();
      usbdbg_init();
      pyb_usb_init0();
-     sensor_init0();
+	 sensor_init0();
+	 sensor_init();
 
 
      // Define MICROPY_HW_UART_REPL to be PYB_UART_6 and define

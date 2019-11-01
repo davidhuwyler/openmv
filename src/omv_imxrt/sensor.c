@@ -823,19 +823,9 @@ int sensor_init()
     return 0;
 }
 
-uint8_t s_isSensorInited;
+
 int sensor_reset()
 {
-	if (!s_isSensorInited) {
-		sensor_init0();
-		sensor_init();	
-	
-	}	
-	#ifndef NO_LCD_MONITOR
-	LCDMonitor_InitFB();
-	#endif
-
-
     // Reset the sesnor state
 	s_sensor.sde          = 0xFF;
     s_sensor.pixformat    = 0xFF;
@@ -1423,7 +1413,7 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 
 	DEBUG_PIN_LOW();
 	CAMERA_TAKE_SNAPSHOT();
-	HAL_Delay(3);
+	HAL_Delay(3); //Time to Transfer the JPEG image to the IDE
 	if (!s_isEnUsbIrqForSnapshot)
 		NVIC_DisableIRQ(USB_OTG1_IRQn);
 	CAMERA_WAIT_FOR_SNAPSHOT();
