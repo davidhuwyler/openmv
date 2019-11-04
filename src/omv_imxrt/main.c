@@ -827,8 +827,6 @@ soft_reset:
      usbdbg_init();
      pyb_usb_init0();
 	 sensor_init0();
-	 sensor_init();
-
 
      // Define MICROPY_HW_UART_REPL to be PYB_UART_6 and define
      // MICROPY_HW_UART_REPL_BAUD in your mpconfigboard.h file if you want a
@@ -885,6 +883,12 @@ soft_reset:
 	}
 #endif
 
+    // Initialize the sensor and check the result after
+    // mounting the file-system to log errors (if any).
+    if (first_soft_reset) {
+        sensor_init();
+    }
+
     // set sys.path based on mounted filesystems (/sd is first so it can override /flash)
     if (mounted_sdcard) {
     	sdcard_setSysPathToSD();
@@ -907,6 +911,7 @@ soft_reset:
 			PRINTF("Executing boot.py\r\n");
 			int ret = pyexec_file(boot_py);
 			if (ret & PYEXEC_FORCED_EXIT) {
+				first_soft_reset = false;
 				goto soft_reset_exit;
 			}
 			if (!ret) {
@@ -932,13 +937,11 @@ soft_reset:
 	// SCnSCB->ACTLR |= SCnSCB_ACTLR_DISDEFWBUF_Msk;
     file_buffer_init0();
 
- MainLoop:
 	/*--------------------------------------------------*
 	 *  	  		Run Main.py from SD					*
 	 *--------------------------------------------------*/
 	if (!usbdbg_script_ready()) {
 		if (first_soft_reset) {
-			first_soft_reset = 0;
 			exec_boot_script("/selftest.py", true, false);
 			apply_settings("/openmv.config");
 			usbdbg_set_irq_enabled(true);

@@ -15,17 +15,14 @@
 #define OMV_BOARD_TYPE          "M7"
 #define OMV_UNIQUE_ID_ADDR      0x1FF0F420
 
-#define OMV_XCLK_MCO            (0U)
-#define OMV_XCLK_TIM            (1U)
-
-// Sensor external clock source.
-#define OMV_XCLK_SOURCE         (OMV_XCLK_TIM)
-
-// Sensor external clock timer frequency.
-#define OMV_XCLK_FREQUENCY      (9000000)
+// Sensor external clock frequency. (PixelCLock)
+#define OMV_XCLK_FREQUENCY      (15000000)
 
 // Sensor PLL register value.
-#define OMV_OV7725_PLL_CONFIG   (0x41)  // x6
+#define OMV_OV7725_PLL_CONFIG   (0x41)  // x4
+
+// Sensor Banding Filter Value
+#define OMV_OV7725_BANDING      (0x7F)
 
 // Have built-in RGB->LAB table.
 #define OMV_HAVE_LAB_TABLE

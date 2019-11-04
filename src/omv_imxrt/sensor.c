@@ -17,6 +17,7 @@
 #include "ov7725.h"
 #include "ov7725_regs.h"
 #include "mt9v034.h"
+#include "lepton.h"
 #include "sensor.h"
 #include "systick.h"
 #include "framebuffer.h"
@@ -88,103 +89,6 @@ sensor_t s_sensor;
 /*******************************************************************************
  * Variables
  ******************************************************************************/
-#ifndef NO_LCD_MONITOR
-#define LCD_FB __attribute__((section(".lcd_fb")))
-/*static*/ LCD_FB uint16_t s_frameBuffer[2][272][480] ;
-#endif
-
-typedef struct _ov7725_reg
-{
-    uint8_t reg;
-    uint8_t val;
-} ov7725_reg_t;
-
-//static const ov7725_reg_t ov7725InitRegs[] = {   //note that:we use our rt defaults reg to replace the openmv's,beacause some diffetents will cause the program fail,the rate of the  lcd flushing is very high,do not know which one have an effect on this
-//    {COM3,          0x00},//if we set the varible COM3_SWAP_YUV,the picture will be a mass one 
-//    {COM7,          COM7_RES_VGA | COM7_FMT_RGB565 | COM7_FMT_RGB},
-//    {0x3d, 0x03},
-//    {0x42, 0x7f},
-//    {0x4d, 0x09},
-
-//    /* DSP */
-//    {0x64, 0xff},
-//    {0x65, 0x20},
-//    {0x66, 0x00},
-//    {0x67, 0x48},
-//    {0x0f, 0xc5},
-//    {0x13, 0xff},
-
-//    /* AEC/AGC/AWB */
-//    {0x63, 0xe0},
-//    {0x14, 0x11},
-//    {0x22, 0x3f},
-//    {0x23, 0x07},
-//    {0x24, 0x40},
-//    {0x25, 0x30},
-//    {0x26, 0xa1},
-//    {0x2b, 0x00},
-//    {0x6b, 0xaa},
-//    {0x0d, 0x41},
-
-//    /* Sharpness. */
-//    {0x90, 0x05},
-//    {0x91, 0x01},
-//    {0x92, 0x03},
-//    {0x93, 0x00},
-
-//    /* Matrix. */
-//    {0x94, 0x90},
-//    {0x95, 0x8a},
-//    {0x96, 0x06},
-//    {0x97, 0x0b},
-//    {0x98, 0x95},
-//    {0x99, 0xa0},
-//    {0x9a, 0x1e},
-
-//    /* Brightness. */
-//    {0x9b, 0x08},
-//    /* Contrast. */
-//    {0x9c, 0x20},
-//    /* UV */
-//    {0x9e, 0x81},
-//    /* DSE */
-//    {0xa6, 0x04},
-
-//    /* Gamma. */
-//    {0x7e, 0x0c},
-//    {0x7f, 0x16},
-//    {0x80, 0x2a},
-//    {0x81, 0x4e},
-//    {0x82, 0x61},
-//    {0x83, 0x6f},
-//    {0x84, 0x7b},
-//    {0x85, 0x86},
-//    {0x86, 0x8e},
-//    {0x87, 0x97},
-//    {0x88, 0xa4},
-//    {0x89, 0xaf},
-//    {0x8a, 0xc5},
-//    {0x8b, 0xd7},
-//    {0x8c, 0xe8},
-
-//};
-
-static status_t cambus_writes(uint8_t slv_addr, const ov7725_reg_t regs[], uint32_t num)
-{
-    status_t status = kStatus_Success;
-
-    for (uint32_t i = 0; i < num; i++)
-    {
-        status = cambus_writeb(slv_addr, regs[i].reg, regs[i].val);
-
-        if (kStatus_Success != status)
-        {
-            break;
-        }
-    }
-
-    return status;
-}
 const int resolution[][2] = {
     {0,    0   },
     // C/SIF Resolutions
@@ -228,19 +132,37 @@ camera_receiver_handle_t cameraReceiver = {
     .resource = &csiResource, .ops = &csi_ops, .privateData = &csiPrivateData,
 };
 
-static void OV7725_DelayMs(uint32_t ms)
+#if (OMV_XCLK_SOURCE == OMV_XCLK_TIM)
+static int extclk_config(int frequency)
 {
-    volatile uint32_t i;
-    uint32_t loopPerMs = SystemCoreClock / 3000;
-
-    while (ms--)
-    {
-        i = loopPerMs;
-        while (i--)
-        {
-        }
-    }
+	//IMXRT1050RM.pdf p.1036
+	switch(frequency)
+	{
+	case 12000000:
+		/* Set PixelClock. */
+		//0<<9 = Derive Clock from OSC_CLK:24Mhz
+		//(2-1)<<11 = divide by 2
+		sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
+		break;
+	case 15000000:
+		/* Set PixelClock. */
+		//2<<9 = Derive Clock from USBPLL:480Mhz/4=120Mhz
+		//(8-1)<<11 = divide by 8
+		sensor_set_framerate(0x80000000 | (2<<9|(8-1)<<11)); //15Mhz PixClock
+		break;
+	case 24000000:
+		/* Set PixelClock. */
+		//0<<9 = Derive Clock from OSC_CLK:24Mhz
+		//(0)<<11 = divide by 1
+		sensor_set_framerate(0x80000000 | (0<<9|0<<11)); //24Mhz PixClock
+		break;
+	default://Not Supported PixelClockFreq! Using 12MHz
+		sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
+		break;
+	}
+    return 0;
 }
+#endif // (OMV_XCLK_SOURCE == OMV_XCLK_TIM)
 
 void sensor_gpio_init(void)
 {
@@ -253,31 +175,6 @@ void sensor_gpio_init(void)
 	//DEBUG PIN EMC_41 (Name:ENET_MDIO)
 	GPIO_PinInit(DEBUG_PIN_PORT, DEBUG_PIN, &config);
 	DEBUG_PIN_LOW();
-}
-
-
-static void BOARD_PullCameraResetPin(bool pullUp)
-{
-    if (pullUp)
-    {
-    	DCMI_RESET_HIGH();
-    }
-    else
-    {
-    	DCMI_RESET_LOW();
-    }
-}
-
-static void BOARD_PullCameraPowerDownPin(bool pullUp)
-{
-    if (pullUp)
-    {
-    	DCMI_PWDN_HIGH();
-    }
-    else
-    {
-    	DCMI_PWDN_LOW();
-    }
 }
 
 void sensor_init0()
@@ -342,7 +239,6 @@ typedef union {
 	};
 	
 }YUV64bit_t;
-
 
 __attribute__((naked))
 RAM_CODE uint32_t ExtractYFromYuv(uint32_t dmaBase, uint32_t datBase, uint32_t _128bitUnitCnt) {
@@ -576,113 +472,168 @@ void CsiFragModeStartNewFrame(void) {
 	while (0 == s_isOmvSensorSnapshotReady) {} \
 	s_isOmvSensorSnapshotReady = 0; \
 	}while(0)
-volatile uint8_t s_isEnUsbIrqForSnapshot;
 
 int sensor_init()
 {   
-	#ifndef XIP_EXTERNAL_FLASH
-	s_isEnUsbIrqForSnapshot = 1;
-	#endif
+	int init_ret = 0;
+
+    /* Do a power cycle */
 	sensor_gpio_init();
+    DCMI_PWDN_HIGH();
+    systick_sleep(10);
+    DCMI_PWDN_LOW();
+    systick_sleep(10);
+
+	// Initialize the camera bus.
     cambus_init();
+
+    /* Reset the sesnor state */
 	memset(&s_sensor, 0, sizeof(s_sensor));
 	s_irq.base0 = (uint32_t)(MAIN_FB()->pixels);
- //   uint8_t com10=0,com2=0,com3=0,clkrc=0;	
-    // Clear sensor chip ID.
-    s_sensor.chip_id = 0;
-    s_sensor.slv_addr = 0x21U; //?
-    s_sensor.snapshot = sensor_snapshot;
-    // Read ON semi sensor ID.
-    cambus_readb(s_sensor.slv_addr, ON_CHIP_ID, &s_sensor.chip_id);
-    if (s_sensor.chip_id == MT9V034_ID) {
-        mt9v034_init(&s_sensor);
-    } else { // Read OV sensor ID.
-        cambus_readb(s_sensor.slv_addr, OV_CHIP_ID, &s_sensor.chip_id);
-        // Initialize sensor struct.
-        switch (119) { //Directly jump to 0x7725
-            case OV9650_ID:
-                ov9650_init(&s_sensor);
-                break;
-            case OV2640_ID:
-                ov2640_init(&s_sensor);
-                break;
-            case OV7725_ID:
-                ov7725_init(&s_sensor);
-                break;
-            default:
-                // Sensor is not supported.
-                return -3;
+
+
+    /* Some sensors have different reset polarities, and we can't know which sensor
+       is connected before initializing cambus and probing the sensor, which in turn
+       requires pulling the sensor out of the reset state. So we try to probe the
+       sensor with both polarities to determine line state. */
+    s_sensor.pwdn_pol = ACTIVE_HIGH;
+    s_sensor.reset_pol = ACTIVE_HIGH;
+
+    /* Reset the sensor */
+    DCMI_RESET_HIGH();
+    systick_sleep(10);
+
+    DCMI_RESET_LOW();
+    systick_sleep(10);
+
+    /* Probe the sensor */
+    s_sensor.slv_addr = cambus_scan();
+    if (s_sensor.slv_addr == 0) {
+        /* Sensor has been held in reset,
+           so the reset line is active low */
+    	s_sensor.reset_pol = ACTIVE_LOW;
+
+        /* Pull the sensor out of the reset state */
+        DCMI_RESET_HIGH();
+        systick_sleep(10);
+
+        /* Probe again to set the slave addr */
+        s_sensor.slv_addr = cambus_scan();
+        if (s_sensor.slv_addr == 0) {
+        	s_sensor.pwdn_pol = ACTIVE_LOW;
+
+            DCMI_PWDN_HIGH();
+            systick_sleep(10);
+
+            s_sensor.slv_addr = cambus_scan();
+            if (s_sensor.slv_addr == 0) {
+            	s_sensor.reset_pol = ACTIVE_HIGH;
+
+                DCMI_RESET_LOW();
+                systick_sleep(10);
+
+                s_sensor.slv_addr = cambus_scan();
+                if (s_sensor.slv_addr == 0) {
+                    return -2;
+                }
+            }
         }
     }
-    // Clear fb_enabled flag
-    // This is executed only once to initialize the FB enabled flag.
-   JPEG_FB()->enabled = 0;
-   // dcmi_config(); replace this func by the below sentences
-    
-    
-  /*  for(uint8_t i=0;i<=0x3F;i++)     for the test:print the reg of the ov7725
-{
-    cambus_readb(s_sensor.slv_addr,i,&temp);
-    PRINTF("%x \r\n",temp);
-}*/
-	
+
+    // Clear sensor chip ID.
+    s_sensor.chip_id = 0;
+
+    // Set default snapshot function.
+    s_sensor.snapshot = sensor_snapshot;
+
+    switch (s_sensor.slv_addr) {
+    case OV7725_SLV_ADDR:
+        cambus_readb(s_sensor.slv_addr, OV_CHIP_ID, &s_sensor.chip_id);
+        break;
+    case OV2640_SLV_ADDR:
+        cambus_readb(s_sensor.slv_addr, OV_CHIP_ID, &s_sensor.chip_id);
+        break;
+    case MT9V034_SLV_ADDR:
+        cambus_readb(s_sensor.slv_addr, ON_CHIP_ID, &s_sensor.chip_id);
+        break;
+    case LEPTON_SLV_ADDR:
+    	s_sensor.chip_id = LEPTON_ID;
+        break;
+    case OV5640_SLV_ADDR:
+        cambus_readb2(s_sensor.slv_addr, OV5640_CHIP_ID, &s_sensor.chip_id);
+        break;
+    default:
+        return -3;
+        break;
+    }
+
+    /* Default Pixeclock */
+    extclk_config(OMV_XCLK_FREQUENCY);
+
     systick_sleep(10);
-    BOARD_PullCameraPowerDownPin(true);
+    switch (s_sensor.chip_id)
+    {
+    case OV7725_ID:
+        init_ret = ov7725_init(&s_sensor);
+        break;
+    case MT9V034_ID:
+        if (extclk_config(MT9V034_XCLK_FREQ) != 0) {
+            return -3;
+        }
+        init_ret = mt9v034_init(&s_sensor);
+        break;
+    case LEPTON_ID:
+        if (extclk_config(LEPTON_XCLK_FREQ) != 0) {
+            return -3;
+        }
+        init_ret = lepton_init(&s_sensor);
+        break;
+    case OV5640_ID:
+        init_ret = ov5640_init(&s_sensor);
+        break;
+    case OV2640_ID:
+        init_ret = ov2640_init(&s_sensor);
+        break;
+    case OV9650_ID:
+        init_ret = ov9650_init(&s_sensor);
+        break;
+    default:
+        return -3;
+        break;
+    }
 
-    /* Delay 1ms. */
-    OV7725_DelayMs(1);
-
-    BOARD_PullCameraPowerDownPin(false);
-
-    /* Delay 1ms. */
-    OV7725_DelayMs(1);
-
-    BOARD_PullCameraResetPin(false);
-
-    /* Delay 1ms. */
-    OV7725_DelayMs(1);
-
-    BOARD_PullCameraResetPin(true);
-
-    /* Delay 1ms. */
-    OV7725_DelayMs(3);
+    if (init_ret != 0 ) {
+        // Sensor init failed.
+        return -4;
+    }
 
 	CsiFragModeInit();
-
-	/* Set PixelClock. */
-	//2<<9 = Derive Clock from USBPLL:480Mhz/4=120Mhz
-	//0<<9 = Derive Clock from OSC_CLK:24Mhz
-	//(2-1)<<11 = divide by 2
-	//(8-1)<<11 = divide by 8
-	//sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
-	sensor_set_framerate(0x80000000 | (2<<9|(8-1)<<11)); //15Mhz PixClock
 
 	s_sensor.isWindowing = 0;
 	s_sensor.wndH = s_sensor.fb_h;
 	s_sensor.wndW = s_sensor.fb_w;
 	s_sensor.wndX = s_sensor.wndY = 0;
 
+    // Clear fb_enabled flag
+    // This is executed only once to initialize the FB enabled flag.
+	JPEG_FB()->enabled = 0;
 
     return 0;
 }
 
-
 int sensor_reset()
 {
+	//sensor_init0();
+	//sensor_init();
+
     // Reset the sesnor state
 	s_sensor.sde          = 0xFF;
     s_sensor.pixformat    = 0xFF;
     s_sensor.framesize    = 0xFF;
     s_sensor.framerate    = 0xFF;
     s_sensor.gainceiling  = 0xFF;
-
     s_sensor.reset(&s_sensor);
-	/*
-      // Reset all registers
-    cambus_writeb(s_sensor.slv_addr, COM7, COM7_RESET);   
-    OV7725_DelayMs(2);
-    cambus_writes(s_sensor.slv_addr,ov7725InitRegs,ARRAY_SIZE(ov7725InitRegs));  
-	*/
+
     return 0;
 }
 
@@ -1090,12 +1041,10 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 
 	DEBUG_PIN_LOW();
 	CAMERA_TAKE_SNAPSHOT();
-	HAL_Delay(3); //Time to Transfer the JPEG image to the IDE
-	if (!s_isEnUsbIrqForSnapshot)
-		NVIC_DisableIRQ(USB_OTG1_IRQn);
+	systick_sleep(3); //Time to Transfer the JPEG image to the IDE
+	NVIC_DisableIRQ(USB_OTG1_IRQn);
 	CAMERA_WAIT_FOR_SNAPSHOT();
-	if (!s_isEnUsbIrqForSnapshot)
-		NVIC_EnableIRQ(USB_OTG1_IRQn);
+	NVIC_EnableIRQ(USB_OTG1_IRQn);
 
 	n++;
 
