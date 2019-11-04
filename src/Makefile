@@ -207,6 +207,10 @@ endif
 
 ifeq ($(TARGET), OPENMVRT_SEEED)
 # Linker Flags
+#LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
+          -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
+          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S
+          
 LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
           -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
           -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S
