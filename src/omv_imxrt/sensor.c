@@ -548,12 +548,16 @@ RAM_CODE void CSI_IRQHandler(void) {
 	else if (csisr & (3<<19)) //DMA Transfer Done Interrupt,  either in FB1 or FB2
 	{
 		uint32_t dmaBase, lineNdx = s_irq.dmaFragNdx * s_irq.linePerFrag;
-			if (s_irq.dmaFragNdx & 1)
-				dmaBase = s_pCSI->CSIDMASA_FB2;
-			else
-				dmaBase = s_pCSI->CSIDMASA_FB1;
-		if (dmaBase >= 0x20200000) //LineBuffer not in Unchached region
+
+		//Switch between the two LineBuffers
+		if (s_irq.dmaFragNdx & 1)
+			dmaBase = s_pCSI->CSIDMASA_FB2;
+		else
+			dmaBase = s_pCSI->CSIDMASA_FB1;
+
+		if (dmaBase >= 0x20200000) //LineBuffer not in Unchached region?
 			DCACHE_CleanInvalidateByRange(dmaBase, s_irq.dmaBytePerFrag);
+
 		if (s_irq.isGray || 
 			(s_sensor.isWindowing &&  lineNdx >= s_sensor.wndY && lineNdx - s_sensor.wndY <= s_sensor.wndH) )
 		{
@@ -561,14 +565,15 @@ RAM_CODE void CSI_IRQHandler(void) {
 			dmaBase += s_sensor.wndX * 2 * s_irq.linePerFrag;	// apply line window offset
 			if (s_irq.isGray) {
 				s_irq.datCurBase = ExtractYFromYuv(dmaBase, s_irq.datCurBase, (s_sensor.wndW * s_irq.linePerFrag) >> 3);
-			} else {
+			}
+			else {
 				uint32_t byteToCopy = (s_sensor.wndW * s_irq.linePerFrag) << 1;
 				memcpy((void*)s_irq.datCurBase, (void*)dmaBase, byteToCopy);
 				s_irq.datCurBase += byteToCopy;
 			}
 		}
 #ifdef USE_LineBuffer
-		else
+		else if (!s_sensor.isWindowing)
 		{
 			uint32_t byteToCopy = (s_irq.dmaBytePerFrag);
 			memcpy((void*)s_irq.datCurBase, (void*)dmaBase, byteToCopy);
@@ -598,7 +603,7 @@ RAM_CODE void CSI_IRQHandler(void) {
 			if (!s_irq.isGray && !s_sensor.isWindowing)
 				s_pCSI->CSIDMASA_FB2 += 2 * s_irq.dmaBytePerFrag;
 #endif //USE_LineBuffer
-			s_pCSI->CSICR3 |= CSI_CSICR3_DMA_REFLASH_RFF_MASK;	// reflash DMA
+			s_pCSI->CSICR3 |= CSI_CSICR3_DMA_REFLASH_RFF_MASK;	// reload DMA
 		}
 	}
 Cleanup:
