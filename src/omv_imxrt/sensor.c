@@ -228,74 +228,6 @@ camera_receiver_handle_t cameraReceiver = {
     .resource = &csiResource, .ops = &csi_ops, .privateData = &csiPrivateData,
 };
 
-void BOARD_InitLcd(void)
-{
-    volatile uint32_t i = 0x100U;
-
-    gpio_pin_config_t config = {
-        kGPIO_DigitalOutput, 0,
-    };
-
-    /* Reset the LCD. */
-    GPIO_PinInit(LCD_DISP_GPIO, LCD_DISP_GPIO_PIN, &config);
-
-    GPIO_PinWrite(LCD_DISP_GPIO, LCD_DISP_GPIO_PIN, 0);
-
-    while (i--)
-    {
-    }
-
-    GPIO_PinWrite(LCD_DISP_GPIO, LCD_DISP_GPIO_PIN, 1);
-
-    /* Backlight. */
-    config.outputLogic = 1;
-    GPIO_PinInit(LCD_BL_GPIO, LCD_BL_GPIO_PIN, &config);
-}
-
-void BOARD_InitLcdifPixClock(void)
-{
-    /*
-     * The desired output frame rate is 60Hz. So the pixel clock frequency is:
-     * (480 + 41 + 4 + 18) * (272 + 10 + 4 + 2) * 60 = 9.2M.
-     * Here set the LCDIF pixel clock to 9.3M.
-     */
-
-    /*
-     * Initialize the Video PLL.
-     * Video PLL output clock is OSC24M * (loopDivider + (denominator / numerator)) / postDivider = 93MHz.
-     */
-    clock_video_pll_config_t config = {
-        .loopDivider = 31, .postDivider = 8, .numerator = 0, .denominator = 0,
-    };
-
-    CLOCK_InitVideoPll(&config);
-
-    /*
-     * 000 derive clock from PLL2
-     * 001 derive clock from PLL3 PFD3
-     * 010 derive clock from PLL5
-     * 011 derive clock from PLL2 PFD0
-     * 100 derive clock from PLL2 PFD1
-     * 101 derive clock from PLL3 PFD1
-     */
-    //TODO Dave: Switch Lcd Clock mux
-#if 0
-    CLOCK_SetMux(kCLOCK_Lcdif1PreMux, 2);
-
-    CLOCK_SetDiv(kCLOCK_Lcdif1PreDiv, 4);
-
-    CLOCK_SetDiv(kCLOCK_Lcdif1Div, 1);
-
-    /*
-     * 000 derive clock from divided pre-muxed lcdif1 clock
-     * 001 derive clock from ipp_di0_clk
-     * 010 derive clock from ipp_di1_clk
-     * 011 derive clock from ldb_di0_clk
-     * 100 derive clock from ldb_di1_clk
-     */
-    CLOCK_SetMux(kCLOCK_Lcdif1Mux, 0);
-#endif
-}
 static void OV7725_DelayMs(uint32_t ms)
 {
     volatile uint32_t i;
@@ -348,19 +280,6 @@ static void BOARD_PullCameraPowerDownPin(bool pullUp)
     }
 }
 
-/*
-static ov7725_resource_t ov7725Resource = {
-	.i2cReceiveFunc =
-    .sccbI2C = OV7725_I2C,
-    .pullResetPin = BOARD_PullCameraResetPin,
-    .pullPowerDownPin = BOARD_PullCameraPowerDownPin,
-    .inputClockFreq_Hz = 24000000,
-};
-
-camera_device_handle_t cameraDevice = {
-    .resource = &ov7725Resource, .ops = &ov7725_ops,
-};
-*/
 void sensor_init0()
 {
     // Init FB mutex
@@ -381,57 +300,6 @@ void sensor_init0()
 }
 uint32_t activeFrameAddr;
 uint32_t inactiveFrameAddr;
-
-#ifndef NO_LCD_MONITOR
-void LCDMonitor_InitFB(void)
-{
-	int i, x,y;
-	for (i=0; i<2; i++) {
-		for (x=0;x<480;x++) {
-			for (y=0;y<272;y++) {
-				if (x % 10 < 8 && y % 10 < 8)
-					s_frameBuffer[i][y][x] = 0;
-				else
-					s_frameBuffer[i][y][x] = (4 | 8<<6 | 4<<11);
-			}
-		}
-	}
-}
-
-void LCDMonitor_Init(void)
-{
-	static uint8_t isInited;
-	if (isInited)
-		return;
-	isInited = 1;
-    // Initialize the camera bus.
-    BOARD_InitLcdifPixClock();
-   // BOARD_InitDebugConsole();
-    BOARD_InitLcd();	
-    elcdif_rgb_mode_config_t lcdConfig = {
-        .panelWidth = APP_LCD_WIDTH,
-        .panelHeight = APP_LCD_HEIGHT,
-        .hsw = APP_HSW,
-        .hfp = APP_HFP,
-        .hbp = APP_HBP,
-        .vsw = APP_VSW,
-        .vfp = APP_VFP,
-        .vbp = APP_VBP,
-        .polarityFlags = APP_LCD_POL_FLAGS,
-        .pixelFormat = kELCDIF_PixelFormatRGB565,
-        .dataBus = APP_LCDIF_DATA_BUS,
-    };	
-	LCDMonitor_InitFB();
-
-    lcdConfig.bufferAddr = (uint32_t)activeFrameAddr;
-
-    ELCDIF_RgbModeInit(APP_ELCDIF, &lcdConfig);
-
-    ELCDIF_SetNextBufferAddr(APP_ELCDIF, (uint32_t)s_frameBuffer);
-    ELCDIF_RgbModeStart(APP_ELCDIF);  	
-
-}
-#endif
 
 CSI_Type *s_pCSI = CSI;
 
@@ -476,33 +344,6 @@ typedef union {
 }YUV64bit_t;
 
 
-#ifdef __CC_ARM
-#define ARMCC_ASM_FUNC	__asm
-ARMCC_ASM_FUNC RAM_CODE uint32_t ExtractYFromYuv(uint32_t dmaBase, uint32_t datBase, uint32_t _128bitUnitCnt) {
-	push	{r4-r7, lr}
-10
-	LDMIA	R0!, {r3-r6}
-	// schedule code carefully to allow dual-issue on Cortex-M7
-	bfi		r7, r3, #0, #8	// Y0
-	bfi		ip, r5, #0, #8	// Y4
-	lsr		r3,	r3,	#16
-	lsr		r5,	r5,	#16
-	bfi		r7, r3, #8, #8	// Y1
-	bfi		ip, r5, #8, #8  // Y5
-	bfi		r7, r4, #16, #8 // Y2
-	bfi		ip, r6, #16, #8 // Y6
-	lsr		r4,	r4,	#16
-	lsr		r6,	r6,	#16
-	bfi		r7, r4, #24, #8 // Y3
-	bfi		ip, r6, #24, #8	// Y7
-	STMIA	r1!, {r7, ip}
-	
-	subs	r2,	#1
-	bne		%b10
-	mov		r0,	r1
-	pop		{r4-r7, pc}
-}
-#else
 __attribute__((naked))
 RAM_CODE uint32_t ExtractYFromYuv(uint32_t dmaBase, uint32_t datBase, uint32_t _128bitUnitCnt) {
 	__asm volatile (
@@ -529,8 +370,6 @@ RAM_CODE uint32_t ExtractYFromYuv(uint32_t dmaBase, uint32_t datBase, uint32_t _
 		"	pop		{r1-r7, ip, pc}  \n "		
 	);
 }
-
-#endif
 
 RAM_CODE void CSI_IRQHandler(void) {
     uint32_t csisr = s_pCSI->CSISR;
@@ -561,7 +400,6 @@ RAM_CODE void CSI_IRQHandler(void) {
 		if (s_irq.isGray || 
 			(s_sensor.isWindowing &&  lineNdx >= s_sensor.wndY && lineNdx - s_sensor.wndY <= s_sensor.wndH) )
 		{
-
 			dmaBase += s_sensor.wndX * 2 * s_irq.linePerFrag;	// apply line window offset
 			if (s_irq.isGray) {
 				s_irq.datCurBase = ExtractYFromYuv(dmaBase, s_irq.datCurBase, (s_sensor.wndW * s_irq.linePerFrag) >> 3);
@@ -838,8 +676,6 @@ int sensor_reset()
     s_sensor.framerate    = 0xFF;
     s_sensor.gainceiling  = 0xFF;
 
-
-    // Call sensor-specific reset function; in the moment,we use our init function and defaults regs
     s_sensor.reset(&s_sensor);
 	/*
       // Reset all registers
@@ -907,14 +743,13 @@ int sensor_set_pixformat(pixformat_t pixformat)
     // Set pixel format
     s_sensor.pixformat = pixformat;
 
-    // Set JPEG mode + no support function
+    // JPEG images from the Camera are not supported...
     if (pixformat == PIXFORMAT_JPEG) {
         return -1;
     }
 
     // Skip the first frame.
     MAIN_FB()->bpp = 0;
-	// CsiFragModeCalc();
     return 0;
 }
 
@@ -967,7 +802,10 @@ int sensor_set_framerate(framerate_t framerate)
     return 0;
 }
 
-int sensor_set_windowing(int x, int y, int w, int h)      //may no this function in our RT csi,be used to set the output window,draw a rect in the picture
+//The CSI Hardware of the i.MX RT does not Support windowing.
+//This implementation saves just the pixels inside the window but all
+//pixels are sensed...
+int sensor_set_windowing(int x, int y, int w, int h)
 {
 	w = (w + 7) & ~7 , x = (x + 7) & ~7;
 	if (x >= s_sensor.fb_w - 8)
@@ -1260,7 +1098,6 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 		NVIC_EnableIRQ(USB_OTG1_IRQn);
 
 	n++;
-
 
 	if (pImg) {
 		pImg->w = MAIN_FB()->w , pImg->h = MAIN_FB()->h , pImg->bpp = MAIN_FB()->bpp;
