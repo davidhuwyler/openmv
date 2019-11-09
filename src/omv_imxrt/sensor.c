@@ -133,6 +133,12 @@ camera_receiver_handle_t cameraReceiver = {
 };
 
 #if (OMV_XCLK_SOURCE == OMV_XCLK_TIM)
+
+static void  setPixelClock(int framerate)
+{
+		CCM->CSCDR3 = framerate & (0x1F<<9);
+}
+
 static int extclk_config(int frequency)
 {
 	//IMXRT1050RM.pdf p.1036
@@ -142,22 +148,22 @@ static int extclk_config(int frequency)
 		/* Set PixelClock. */
 		//0<<9 = Derive Clock from OSC_CLK:24Mhz
 		//(2-1)<<11 = divide by 2
-		sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
+		setPixelClock(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
 		break;
 	case 15000000:
 		/* Set PixelClock. */
 		//2<<9 = Derive Clock from USBPLL:480Mhz/4=120Mhz
 		//(8-1)<<11 = divide by 8
-		sensor_set_framerate(0x80000000 | (2<<9|(8-1)<<11)); //15Mhz PixClock
+		setPixelClock(0x80000000 | (2<<9|(8-1)<<11)); //15Mhz PixClock
 		break;
 	case 24000000:
 		/* Set PixelClock. */
 		//0<<9 = Derive Clock from OSC_CLK:24Mhz
 		//(0)<<11 = divide by 1
-		sensor_set_framerate(0x80000000 | (0<<9|0<<11)); //24Mhz PixClock
+		setPixelClock(0x80000000 | (0<<9|0<<11)); //24Mhz PixClock
 		break;
 	default://Not Supported PixelClockFreq! Using 12MHz
-		sensor_set_framerate(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
+		setPixelClock(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
 		break;
 	}
     return 0;
@@ -190,7 +196,8 @@ void sensor_init0()
     memset(JPEG_FB(), 0, sizeof(*JPEG_FB()));
 
     // Set default quality
-    JPEG_FB()->quality = 35;
+    JPEG_FB()->quality = ((JPEG_QUALITY_HIGH - JPEG_QUALITY_LOW) / 2) + JPEG_QUALITY_LOW;
+    //JPEG_FB()->quality = 35;
 
     // Set fb_enabled
     JPEG_FB()->enabled = fb_enabled;
@@ -618,21 +625,32 @@ int sensor_init()
     // This is executed only once to initialize the FB enabled flag.
 	JPEG_FB()->enabled = 0;
 
+    // Set default color palette.
+	s_sensor.color_palette = rainbow_table;
+
     return 0;
 }
 
 int sensor_reset()
 {
-	//sensor_init0();
-	//sensor_init();
-
     // Reset the sesnor state
-	s_sensor.sde          = 0xFF;
-    s_sensor.pixformat    = 0xFF;
-    s_sensor.framesize    = 0xFF;
-    s_sensor.framerate    = 0xFF;
-    s_sensor.gainceiling  = 0xFF;
-    s_sensor.reset(&s_sensor);
+	s_sensor.sde         = 0;
+	s_sensor.pixformat   = 0;
+	s_sensor.framesize   = 0;
+	s_sensor.framerate   = 0;
+	s_sensor.gainceiling = 0;
+	//s_sensor.vsync_gpio  = NULL;
+
+    // Reset default color palette.
+	s_sensor.color_palette = rainbow_table;
+
+    // Restore shutdown state on reset.
+    sensor_shutdown(false);
+
+    // Call sensor-specific reset function
+    if (s_sensor.reset(&s_sensor) != 0) {
+        return -1;
+    }
 
     return 0;
 }
@@ -656,6 +674,18 @@ int sensor_sleep(int enable)
         // Operation not supported
         return -1;
     }
+    return 0;
+}
+
+int sensor_shutdown(int enable)
+{
+    if (enable) {
+        DCMI_PWDN_HIGH();
+    } else {
+        DCMI_PWDN_LOW();
+    }
+
+    systick_sleep(10);
     return 0;
 }
 
@@ -737,8 +767,6 @@ int sensor_set_framerate(framerate_t framerate)
        /* no change */
         return 0;
     }
-	if (framerate & 0x80000000)
-		CCM->CSCDR3 = framerate & (0x1F<<9);
 
     /* call the sensor specific function */
     if (s_sensor.set_framerate == NULL
@@ -1034,18 +1062,19 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
     }
 
 	static uint8_t n;
-	DEBUG_PIN_HIGH();
+
 	if (JPEG_FB()->enabled) {
 		fb_update_jpeg_buffer();
 	}
 
-	DEBUG_PIN_LOW();
+
+	DEBUG_PIN_HIGH();
 	CAMERA_TAKE_SNAPSHOT();
-	systick_sleep(3); //Time to Transfer the JPEG image to the IDE
+	systick_sleep(5); //Time to Transfer the JPEG image to the IDE
 	NVIC_DisableIRQ(USB_OTG1_IRQn);
 	CAMERA_WAIT_FOR_SNAPSHOT();
 	NVIC_EnableIRQ(USB_OTG1_IRQn);
-
+	DEBUG_PIN_LOW();
 	n++;
 
 	if (pImg) {

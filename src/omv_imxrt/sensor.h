@@ -78,7 +78,6 @@ typedef enum {
     FRAMERATE_15FPS=0x83,
     FRAMERATE_30FPS=0x81,
     FRAMERATE_60FPS=0x80,
-	FRAMERATE_HWREG = 0x80000000, 
 } framerate_t;
 
 typedef enum {
