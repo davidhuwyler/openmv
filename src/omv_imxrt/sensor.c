@@ -1041,6 +1041,7 @@ static void sensor_check_bufsize()
 // overwrite image pixels before they are compressed.
 int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb)
 {
+	DEBUG_PIN_HIGH();
   	sensor = sensor , streaming_cb = streaming_cb;	// keep compatible with original openMV
     sensor_check_bufsize();
 
@@ -1067,19 +1068,20 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 		fb_update_jpeg_buffer();
 	}
 
+	DEBUG_PIN_LOW();
 
-	DEBUG_PIN_HIGH();
 	CAMERA_TAKE_SNAPSHOT();
 	systick_sleep(5); //Time to Transfer the JPEG image to the IDE
 	NVIC_DisableIRQ(USB_OTG1_IRQn);
 	CAMERA_WAIT_FOR_SNAPSHOT();
 	NVIC_EnableIRQ(USB_OTG1_IRQn);
-	DEBUG_PIN_LOW();
+
 	n++;
 
 	if (pImg) {
 		pImg->w = MAIN_FB()->w , pImg->h = MAIN_FB()->h , pImg->bpp = MAIN_FB()->bpp;
 		pImg->pixels = (uint8_t*) MAIN_FB()->pixels;		
 	}
+
     return 0;
 }
