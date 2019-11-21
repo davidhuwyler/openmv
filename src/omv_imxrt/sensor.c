@@ -1067,8 +1067,8 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 	if (JPEG_FB()->enabled) {
 		fb_update_jpeg_buffer();
 	}
-
 	DEBUG_PIN_LOW();
+
 
 	CAMERA_TAKE_SNAPSHOT();
 	systick_sleep(5); //Time to Transfer the JPEG image to the IDE
@@ -1082,6 +1082,6 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 		pImg->w = MAIN_FB()->w , pImg->h = MAIN_FB()->h , pImg->bpp = MAIN_FB()->bpp;
 		pImg->pixels = (uint8_t*) MAIN_FB()->pixels;		
 	}
-
+	DEBUG_PIN_LOW();
     return 0;
 }

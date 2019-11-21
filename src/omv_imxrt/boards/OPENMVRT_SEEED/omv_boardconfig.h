@@ -8,7 +8,6 @@
  */
 #ifndef __OMV_BOARDCONFIG_H__
 #define __OMV_BOARDCONFIG_H__
-#include "../../overlay_manager.h"
 #include "pin.h"
 // Architecture info
 #define OMV_ARCH_STR            "OpenMV i.MX RT1050/60 port" // 33 chars max

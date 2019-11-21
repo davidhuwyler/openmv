@@ -85,7 +85,6 @@
 
 #include "framebuffer.h"
 #include "ini.h"
-#include "overlay_manager.h"
 
 #else
 #include <stdio.h>
