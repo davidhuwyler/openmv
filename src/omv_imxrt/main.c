@@ -578,6 +578,7 @@ static const char fresh_readme_txt[] __ALIGNED(4) =
 // avoid inlining to avoid stack usage within main()
 MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
     // init the vfs object
+	storage_init();
     fs_user_mount_t *vfs_fat = &fs_user_mount_flash;
     vfs_fat->flags = 0;
     pyb_flash_init_vfs(vfs_fat);
