@@ -459,6 +459,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(OMV_DIR)/py/, \
 	py_helper.o                             \
 	py_omv.o                                \
 	py_sensor.o                             \
+	py_lcd.o                                \
 	py_time.o                               \
 	py_image.o                              \
 	py_mjpeg.o                              \

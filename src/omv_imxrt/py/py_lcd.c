@@ -18,29 +18,29 @@
 #include "py_helper.h"
 #include "py_image.h"
 
-extern const pin_obj_t pin_EMC_19;
-#define RST_PINOBJ			pin_EMC_19
+extern const pin_obj_t pin_AD_B0_13;
+#define RST_PINOBJ			pin_AD_B0_13
 #define RST_PORT             (RST_PINOBJ.gpio)
 #define RST_PIN              (RST_PINOBJ.pin)
-#define RST_PIN_WRITE(bit)   HAL_GPIO_WritePin(RST_PORT, RST_PIN, bit);
+#define RST_PIN_WRITE(bit)   GPIO_PinWrite(RST_PORT, RST_PIN, bit);
 
-extern const pin_obj_t pin_EMC_20;
-#define RS_PINOBJ			pin_EMC_20
+extern const pin_obj_t pin_AD_B1_00;
+#define RS_PINOBJ			pin_AD_B1_00
 #define RS_PORT             (RS_PINOBJ.gpio)
 #define RS_PIN              (RS_PINOBJ.pin)
-#define RS_PIN_WRITE(bit)   HAL_GPIO_WritePin(RS_PORT, RS_PIN, bit);
+#define RS_PIN_WRITE(bit)   GPIO_PinWrite(RS_PORT, RS_PIN, bit);
 
-extern const pin_obj_t pin_EMC_30;
-#define CS_PINOBJ			pin_EMC_30
+extern const pin_obj_t pin_AD_B0_15;
+#define CS_PINOBJ			pin_AD_B0_15
 #define CS_PORT             (CS_PINOBJ.gpio)
 #define CS_PIN              (CS_PINOBJ.pin)
-#define CS_PIN_WRITE(bit)   HAL_GPIO_WritePin(CS_PORT, CS_PIN, bit);
+#define CS_PIN_WRITE(bit)   GPIO_PinWrite(CS_PORT, CS_PIN, bit);
 
-extern const pin_obj_t pin_AD_B0_13;
-#define LED_PINOBJ			pin_AD_B0_13
+extern const pin_obj_t pin_AD_B0_14;
+#define LED_PINOBJ			pin_AD_B0_14
 #define LED_PORT            (LED_PINOBJ.gpio)
 #define LED_PIN             (LED_PINOBJ.pin)
-#define LED_PIN_WRITE(bit)  HAL_GPIO_WritePin(LED_PORT, LED_PIN, bit);
+#define LED_PIN_WRITE(bit)  GPIO_PinWrite(LED_PORT, LED_PIN, bit);
 
 extern mp_obj_t pyb_spi_send(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
 extern mp_obj_t pyb_spi_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args);
@@ -144,16 +144,17 @@ static mp_obj_t py_lcd_deinit()
         case LCD_NONE:
             return mp_const_none;
         case LCD_SHIELD:
-            HAL_GPIO_DeInit(RST_PORT, RST_PIN);
-            HAL_GPIO_DeInit(RS_PORT, RS_PIN);
-            HAL_GPIO_DeInit(CS_PORT, CS_PIN);
+        	//TODO Dave: Implement deinit pins
+            //HAL_GPIO_DeInit(RST_PORT, RST_PIN);
+            //HAL_GPIO_DeInit(RS_PORT, RS_PIN);
+            //HAL_GPIO_DeInit(CS_PORT, CS_PIN);
             pyb_spi_deinit(s_spiPort);
             s_spiPort = NULL;
             s_width = 0;
             height = 0;
             type = LCD_NONE;
             if (s_backlight_init) {
-                HAL_GPIO_DeInit(LED_PORT, LED_PIN);
+                //HAL_GPIO_DeInit(LED_PORT, LED_PIN);
                 s_backlight_init = false;
             }
             return mp_const_none;
@@ -177,7 +178,7 @@ static mp_obj_t py_lcd_init(uint n_args, const mp_obj_t *args, mp_map_t *kw_args
                 2, // n_args
                 3, // n_kw
                 (mp_obj_t []) {
-                    MP_OBJ_NEW_SMALL_INT(1), // SPI Port
+                    MP_OBJ_NEW_SMALL_INT(4), // SPI Port
 					MP_OBJ_NEW_SMALL_INT(0), // SPI mode
 					MP_OBJ_NEW_QSTR(MP_QSTR_baudrate),
                     MP_OBJ_NEW_SMALL_INT(1000000000/67), // SPI speed
@@ -260,7 +261,7 @@ static mp_obj_t py_lcd_get_backlight()
             if (!s_backlight_init) {
                 return mp_const_none;
             }
-            return mp_obj_new_int(HAL_GPIO_ReadPin(LED_PORT, LED_PIN));
+            return mp_obj_new_int(GPIO_PinRead(LED_PORT, LED_PIN));
     }
     return mp_const_none;
 }
