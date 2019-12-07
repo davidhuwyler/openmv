@@ -24,8 +24,8 @@
 #define TIME_JPEG   (0)
 
 #ifndef RAM_CODE
-//#define RAM_CODE __attribute__((section(".ramfunc.$SRAM_ITC")))
-#define RAM_CODE
+#define RAM_CODE __attribute__((section(".ramfunc.$SRAM_ITC")))
+//#define RAM_CODE
 #endif
 
 #if defined(OMV_HARDWARE_JPEG)

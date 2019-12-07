@@ -1067,7 +1067,7 @@ int sensor_snapshot(sensor_t *sensor, image_t *pImg, streaming_cb_t streaming_cb
 	if (JPEG_FB()->enabled) {
 		fb_update_jpeg_buffer();
 	}
-	DEBUG_PIN_LOW();
+	//DEBUG_PIN_LOW();
 
 
 	CAMERA_TAKE_SNAPSHOT();
