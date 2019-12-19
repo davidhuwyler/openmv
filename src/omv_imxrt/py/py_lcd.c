@@ -18,8 +18,8 @@
 #include "py_helper.h"
 #include "py_image.h"
 
-extern const pin_obj_t pin_AD_B0_13;
-#define RST_PINOBJ			pin_AD_B0_13
+extern const pin_obj_t pin_AD_B1_01;
+#define RST_PINOBJ			pin_AD_B1_01
 #define RST_PORT             (RST_PINOBJ.gpio)
 #define RST_PIN              (RST_PINOBJ.pin)
 #define RST_PIN_WRITE(bit)   GPIO_PinWrite(RST_PORT, RST_PIN, bit);

@@ -440,7 +440,7 @@ HAL_StatusTypeDef HAL_Init(void)
 	return HAL_OK;
 }
 
-#if(MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
+#if(MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH_FS
 static const char fresh_boot_py[] __ALIGNED(4) =
 "# boot.py -- run on boot-up\r\n"
 "# can run arbitrary Python, but best to keep it minimal\r\n"
@@ -850,7 +850,7 @@ soft_reset:
  	 *--------------------------------------------------*/
      // Create it if needed, mount in on /flash, and set it as current dir.
  	bool mounted_flash;
- 	#if (MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH
+ 	#if (MICROPY_HW_HAS_HYPER_FLASH || MICROPY_HW_HAS_QSPI_FLASH) && MICROPY_HW_HAS_FLASH_FS
      mounted_flash = init_flash_fs(reset_mode);
  	#else
  	mounted_flash = 0;
