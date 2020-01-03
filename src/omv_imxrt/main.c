@@ -827,6 +827,7 @@ soft_reset:
      usbdbg_init();
      pyb_usb_init0();
 	 sensor_init0();
+	 servo_init0();
 
      // Define MICROPY_HW_UART_REPL to be PYB_UART_6 and define
      // MICROPY_HW_UART_REPL_BAUD in your mpconfigboard.h file if you want a
