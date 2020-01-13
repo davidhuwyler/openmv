@@ -27,7 +27,6 @@
 #include "fsl_camera_receiver.h"
 #include "fsl_csi_camera_adapter.h"
 #include "fsl_camera.h"
-#include "fsl_camera_receiver.h"
 #include "fsl_camera_device.h"
 #include "fsl_ov7725.h"
 #include "fsl_elcdif.h"
