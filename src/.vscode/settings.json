@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "fsl_lpspi_cmsis.h": "c",
+        "fsl_lpspi_edma.h": "c",
+        "framebuffer.h": "c",
+        "fsl_dmamux.h": "c",
+        "sensor.h": "c",
+        "mpconfigboard.h": "c",
+        "fsl_debug_console.h": "c",
+        "driver_spi.h": "c",
+        "fsl_lpspi.h": "c",
+        "rte_device.h": "c"
+    }
+}

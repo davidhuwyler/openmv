@@ -23,6 +23,9 @@
 // Sensor Banding Filter Value
 #define OMV_OV7725_BANDING      (0x7F)
 
+//Enables the LEPTON CAM
+#define OMV_ENABLE_LEPTON
+
 // Have built-in RGB->LAB table.
 #define OMV_HAVE_LAB_TABLE
 

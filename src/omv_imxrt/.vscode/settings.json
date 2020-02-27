@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "omv_boardconfig.h": "c",
+        "cambus.h": "c"
+    }
+}

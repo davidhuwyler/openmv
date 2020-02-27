@@ -17,4 +17,7 @@ int cambus_readb2(uint8_t slv_addr, uint16_t reg_addr, uint8_t *reg_data);
 int cambus_writeb2(uint8_t slv_addr, uint16_t reg_addr, uint8_t reg_data);
 int cambus_readw(uint8_t slv_addr, uint8_t reg_addr,  uint16_t *reg_data);
 int cambus_writew(uint8_t slv_addr, uint8_t reg_addr, uint16_t reg_data);
+int cambus_readw2(uint8_t slv_addr, uint16_t reg_addr, uint16_t *reg_data);
+int cambus_writew2(uint8_t slv_addr, uint16_t reg_addr, uint16_t reg_data);
+
 #endif // __CAMBUS_H__

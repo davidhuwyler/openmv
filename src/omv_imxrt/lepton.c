@@ -13,8 +13,19 @@
 #include "sensor.h"
 #include "systick.h"
 #include "framebuffer.h"
+#include "mpconfigboard.h"
 #include "omv_boardconfig.h"
 #include "common.h"
+
+#include "fsl_common.h"
+#include "fsl_debug_console.h"
+#include "fsl_clock.h"
+#include "fsl_lpspi.h"
+#include "fsl_edma.h"
+#include "fsl_lpspi_edma.h"
+#include "fsl_lpspi_cmsis.h"
+#include "fsl_dmamux.h"
+#include "fsl_iomuxc.h"
 
 #if defined(OMV_ENABLE_LEPTON)
 #include "crc16.h"
@@ -50,8 +61,28 @@ static bool measurement_mode = false;
 static float min_temp = DEFAULT_MIN_TEMP;
 static float max_temp = DEFAULT_MAX_TEMP;
 
-static SPI_HandleTypeDef SPIHandle;
-static DMA_HandleTypeDef DMAHandle;
+static lpspi_master_config_t mstCfg;
+static clock_mux_t clockSel;
+static clock_div_t clockDiv;
+
+#define DRIVER_MASTER_SPI Driver_SPI4
+#define LEPTON_LPSPI_MASTER_IRQN (LPSPI4_IRQn)
+#define LEPTON_LPSPI_DEALY_COUNT 0xfffffU
+#define LEPTON_LPSPI_MASTER_DMA_MUX_BASEADDR DMAMUX
+#define LEPTON_LPSPI_MASTER_DMA_BASEADDR DMA0
+
+#define LPSPI_CLOCK_SOURCE_SELECT  (1U)
+#define LPSPI_CLOCK_SOURCE_DIVIDER (7U)
+#define LPSPI_CLOCK_FREQ (CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (LPSPI_CLOCK_SOURCE_DIVIDER + 1U))
+#define LPSPI_MASTER_CLOCK_FREQ LPSPI_CLOCK_FREQ
+#define LPSPI_SLAVE_CLOCK_FREQ LPSPI_CLOCK_FREQ
+
+uint32_t LPSPI4_GetFreq(void)
+{
+    return LPSPI_CLOCK_FREQ;
+}
+
+
 LEP_CAMERA_PORT_DESC_T   LEPHandle;
 extern uint8_t _line_buf;
 extern uint8_t _vospi_buf;
@@ -66,20 +97,20 @@ static int lepton_reset(sensor_t *sensor, bool measurement_mode);
 
 void LEPTON_SPI_IRQHandler(void)
 {
-    HAL_SPI_IRQHandler(&SPIHandle);
+    //HAL_SPI_IRQHandler(&SPIHandle);
 }
 
 void LEPTON_SPI_DMA_IRQHandler(void)
 {
-    HAL_DMA_IRQHandler(SPIHandle.hdmarx);
+    //HAL_DMA_IRQHandler(SPIHandle.hdmarx);
 }
 
 static void lepton_sync()
 {
-    HAL_SPI_Abort(&SPIHandle);
+    //HAL_SPI_Abort(&SPIHandle);
 
     // Disable DMA IRQ
-    HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
+    //HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
 
     debug_printf("resync...\n");
     systick_sleep(200);
@@ -88,8 +119,8 @@ static void lepton_sync()
     vospi_pid = VOSPI_FIRST_PACKET;
     vospi_seg = VOSPI_FIRST_SEGMENT;
 
-    HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
-    HAL_SPI_Receive_DMA(&SPIHandle, vospi_packet, VOSPI_PACKET_SIZE);
+    //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
+    //HAL_SPI_Receive_DMA(&SPIHandle, vospi_packet, VOSPI_PACKET_SIZE);
 }
 
 static uint16_t lepton_calc_crc(uint8_t *buf)
@@ -347,16 +378,21 @@ static int lepton_reset(sensor_t *sensor, bool measurement_mode)
     LEP_AGC_ROI_T roi;
     memset(&LEPHandle, 0, sizeof(LEP_CAMERA_PORT_DESC_T));
 
-    for (uint32_t start = HAL_GetTick(); ;systick_sleep(1)) {
+    uint32_t start = HAL_GetTick();
+    while(true)
+    {
         if (LEP_OpenPort(0, LEP_CCI_TWI, 0, &LEPHandle) == LEP_OK) {
             break;
         }
         if (HAL_GetTick() - start >= LEPTON_TIMEOUT) {
             return -1;
         }
+        systick_sleep(1);
     }
 
-    for (uint32_t start = HAL_GetTick(); ;systick_sleep(1)) {
+    start = HAL_GetTick();
+    while(true)
+    {
         LEP_SDK_BOOT_STATUS_E status;
         if (LEP_GetCameraBootStatus(&LEPHandle, &status) != LEP_OK) {
             return -1;
@@ -367,9 +403,12 @@ static int lepton_reset(sensor_t *sensor, bool measurement_mode)
         if (HAL_GetTick() - start >= LEPTON_TIMEOUT) {
             return -1;
         }
+        systick_sleep(1);
     }
 
-    for (uint32_t start = HAL_GetTick(); ;systick_sleep(1)) {
+    start = HAL_GetTick();
+    while(true)
+    {
         LEP_UINT16 status;
         if (LEP_DirectReadRegister(&LEPHandle, LEP_I2C_STATUS_REG, &status) != LEP_OK) {
             return -1;
@@ -380,6 +419,7 @@ static int lepton_reset(sensor_t *sensor, bool measurement_mode)
         if (HAL_GetTick() - start >= LEPTON_TIMEOUT) {
             return -1;
         }
+        systick_sleep(1);
     }
 
     if (LEP_GetRadEnableState(&LEPHandle, &rad) != LEP_OK
@@ -423,11 +463,12 @@ static int reset(sensor_t *sensor)
     return lepton_reset(sensor, false);
 }
 
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+void HAL_SPI_RxCpltCallback(uint32_t event)
 {
     (void) lepton_calc_crc; // to shut the compiler up.
 
     if (vospi_resync == true) {
+        DRIVER_MASTER_SPI.Receive(vospi_packet, VOSPI_PACKET_SIZE);
         return; // nothing to do here
     }
 
@@ -438,7 +479,7 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
             if (vospi_pid == VOSPI_FIRST_PACKET) {
                 // Wait for the first packet of the first segement.
                 vospi_pid = VOSPI_FIRST_PACKET;
-                vospi_seg = VOSPI_FIRST_SEGMENT;
+                vospi_seg = VOSPI_FIRST_SEGMENT;                
             } else { // lost sync
                 vospi_resync = true;
                 debug_printf("lost sync, packet id:%lu expected id:%lu \n", pid, vospi_pid);
@@ -456,16 +497,44 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
             memcpy(vospi_buffer + vospi_pid * VOSPI_LINE_SIZE,
                     vospi_packet + VOSPI_HEADER_SIZE, VOSPI_LINE_SIZE);
             if ((++vospi_pid % VOSPI_NUMBER_PACKETS) == 0) {
-                vospi_seg++;
+                vospi_seg++;                
             }
-        }
+        }        
     }
+    DRIVER_MASTER_SPI.Receive(vospi_packet, VOSPI_PACKET_SIZE);
+}
+
+static int sensor_check_buffsize(sensor_t *sensor)
+{
+    int bpp=0;
+    switch (sensor->pixformat) {
+        case PIXFORMAT_BAYER:
+        case PIXFORMAT_GRAYSCALE:
+            bpp = 1;
+            break;
+        case PIXFORMAT_YUV422:
+        case PIXFORMAT_RGB565:
+            bpp = 2;
+            break;
+        default:
+            break;
+    }
+
+    if ((MAIN_FB()->w * MAIN_FB()->h * bpp) > OMV_RAW_BUF_SIZE) {
+        return -1;
+    }
+
+    return 0;
 }
 
 static int snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_cb)
 {
     fb_update_jpeg_buffer();
 
+    if (sensor_check_buffsize(sensor) == -1) {
+        return -1;
+    }
+    
     if ((!h_res) || (!v_res) || (!sensor->framesize) || (!sensor->pixformat)) {
         return -1;
     }
@@ -474,15 +543,12 @@ static int snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
     bool streaming = (streaming_cb != NULL); // Streaming mode.
 
     do {
-        // The SPI DMA device is always clocking the FLIR Lepton in the background.
-        // The code below resets the vospi control values to let data be pulled in.
-        // If we need to re-sync we do it. Otherwise, after we finish pulling data
-        // in we exit and let the SPI bus keep running. Then on the next call to
-        // snapshot we read in more data and pull in the next frame.
-        HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
+        //HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
         vospi_pid = VOSPI_FIRST_PACKET;
         vospi_seg = VOSPI_FIRST_SEGMENT;
-        HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
+        //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
+
+        DRIVER_MASTER_SPI.Receive(vospi_packet, VOSPI_PACKET_SIZE);
 
         // Snapshot start tick
         uint32_t tick_start = HAL_GetTick();
@@ -518,10 +584,10 @@ static int snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
                 }
 
                 // Reset the VOSPI interface again.
-                HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
+                //HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
                 vospi_pid = VOSPI_FIRST_PACKET;
                 vospi_seg = VOSPI_FIRST_SEGMENT;
-                HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
+                //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
             }
         } while (vospi_pid < vospi_packets); // only checking one volatile var so atomic.
 
@@ -650,6 +716,7 @@ int lepton_init(sensor_t *sensor)
     SENSOR_HW_FLAGS_SET(sensor, SENSOR_HW_FLAGS_JPEGE, 0);
 
     // Configure the DMA handler for Transmission process
+    /*
     DMAHandle.Instance                 = LEPTON_SPI_DMA_STREAM;
     DMAHandle.Init.Request             = LEPTON_SPI_DMA_REQUEST;
     DMAHandle.Init.Mode                = DMA_CIRCULAR;
@@ -677,37 +744,36 @@ int lepton_init(sensor_t *sensor)
         // Initialization Error
         return -1;
     }
+*/
 
-    memset(&SPIHandle, 0, sizeof(SPIHandle));
-    SPIHandle.Instance               = LEPTON_SPI;
-    SPIHandle.Init.NSS               = SPI_NSS_HARD_OUTPUT;
-    SPIHandle.Init.NSSPMode          = SPI_NSS_PULSE_DISABLE;
-    SPIHandle.Init.NSSPolarity       = SPI_NSS_POLARITY_LOW;
-    SPIHandle.Init.Mode              = SPI_MODE_MASTER;
-    SPIHandle.Init.TIMode            = SPI_TIMODE_DISABLE;
-    SPIHandle.Init.Direction         = SPI_DIRECTION_2LINES_RXONLY;
-    SPIHandle.Init.DataSize          = SPI_DATASIZE_8BIT;
-    SPIHandle.Init.FifoThreshold     = SPI_FIFO_THRESHOLD_04DATA;
-    SPIHandle.Init.FirstBit          = SPI_FIRSTBIT_MSB;
-    SPIHandle.Init.CLKPhase          = SPI_PHASE_2EDGE;
-    SPIHandle.Init.CLKPolarity       = SPI_POLARITY_HIGH;
-    SPIHandle.Init.BaudRatePrescaler = LEPTON_SPI_PRESCALER;
-    // Recommanded setting to avoid glitches
-    SPIHandle.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_ENABLE;
 
-    if (HAL_SPI_Init(&SPIHandle) != HAL_OK) {
-        LEPTON_SPI_RESET();
-        LEPTON_SPI_RELEASE();
-        LEPTON_SPI_CLK_DISABLE();
-        return -1;
-    }
+    CLOCK_SetMux(kCLOCK_LpspiMux, LPSPI_CLOCK_SOURCE_SELECT);
+    CLOCK_SetDiv(kCLOCK_LpspiDiv, LPSPI_CLOCK_SOURCE_DIVIDER);
+
+    /* DMA Mux init and EDMA init */
+    edma_config_t edmaConfig = {0};
+    EDMA_GetDefaultConfig(&edmaConfig);
+    EDMA_Init(LEPTON_LPSPI_MASTER_DMA_BASEADDR, &edmaConfig);
+    DMAMUX_Init(LEPTON_LPSPI_MASTER_DMA_MUX_BASEADDR);
+
+    DRIVER_MASTER_SPI.Initialize(HAL_SPI_RxCpltCallback);
+    DRIVER_MASTER_SPI.PowerControl(ARM_POWER_FULL);
+    //DRIVER_MASTER_SPI.Control(ARM_SPI_MODE_MASTER, 1000000000/67);
+    DRIVER_MASTER_SPI.Control(ARM_SPI_MODE_MASTER, 500000);
+
+
+    //NVIC_EnableIRQ(LEPTON_LPSPI_MASTER_IRQN);	
+	//LPSPI_MasterInit(LPSPI4, &mstCfg, LPSPI_MASTER_CLOCK_FREQ);
+    //LPSPI_Reset(LPSPI4);
+    //LPSPI_ClearStatusFlags(LPSPI4,kLPSPI_AllStatusFlag);
+    ///----------------------------------------------------------
 
     // Associate the initialized DMA handle to the the SPI handle
-    __HAL_LINKDMA(&SPIHandle, hdmarx, DMAHandle);
+    //__HAL_LINKDMA(&SPIHandle, hdmarx, DMAHandle);
 
     // NVIC configuration for SPI transfer complete interrupt
-    NVIC_SetPriority(LEPTON_SPI_IRQn, IRQ_PRI_DCMI);
-    HAL_NVIC_EnableIRQ(LEPTON_SPI_IRQn);
+    //NVIC_SetPriority(LEPTON_SPI_IRQn, IRQ_PRI_DCMI);
+    //HAL_NVIC_EnableIRQ(LEPTON_SPI_IRQn);
 
     return 0;
 }
