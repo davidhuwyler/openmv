@@ -738,8 +738,6 @@ int lepton_init(sensor_t *sensor)
 
     DMAMUX_Init(DMAMUX);
     EDMA_GetDefaultConfig(&dmaConfig);
-    dmaConfig.enableHaltOnError = false;
-    dmaConfig.enableContinuousLinkMode = true;
     EDMA_Init(DMA0, &dmaConfig);
 
     DMAMUX_SetSource(DMAMUX, 7 /*DMA RX Channel*/, kDmaRequestMuxLPSPI4Rx);

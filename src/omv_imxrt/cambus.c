@@ -215,20 +215,78 @@ int cambus_writew(uint8_t slv_addr, uint8_t reg_addr, uint16_t reg_data)
 
 int cambus_readb2(uint8_t slv_addr, uint16_t reg_addr, uint8_t *reg_data)
 {
-    return cambus_readb(slv_addr, reg_addr, reg_data);
+    for(;;); //not implemented jet
+    return 0;
 }
 
 int cambus_writeb2(uint8_t slv_addr, uint16_t reg_addr, uint8_t reg_data)
 {
-    return cambus_writeb(slv_addr, reg_addr, reg_data);
+    for(;;); //not implemented jet
+    return 0;
 }
 
 int cambus_readw2(uint8_t slv_addr, uint16_t reg_addr, uint16_t *reg_data)
 {
-    return cambus_readw(slv_addr, reg_addr, reg_data);
+    status_t reVal = kStatus_Fail;
+    byte buffer[2];
+    buffer[0] = (uint8_t)(reg_addr>>8);
+    buffer[1] = (uint8_t)(reg_addr);
+
+    while (1)
+    {
+        reVal = LPI2C_MasterStart(I2C_MASTER, slv_addr>>1, kLPI2C_Write);
+
+        if (kStatus_Success != reVal)
+        {
+            LPI2C_MasterStop(I2C_MASTER);
+	    return -1;
+        }
+        else
+        {
+            break;
+        }
+    }
+    reVal = LPI2C_MasterSend(I2C_MASTER, buffer, 2);
+    reVal = LPI2C_MasterStop(I2C_MASTER);
+    reVal = LPI2C_MasterStart(I2C_MASTER, slv_addr>>1, kLPI2C_Read);
+    reVal = LPI2C_MasterReceive(I2C_MASTER, reg_data, 2);
+    reVal = LPI2C_MasterStop(I2C_MASTER);
+    *reg_data = (*reg_data >> 8) | (*reg_data << 8);
+
+    if (reVal == kStatus_Success)
+    {
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }    
 }
 
 int cambus_writew2(uint8_t slv_addr, uint16_t reg_addr, uint16_t reg_data)
 {
-    return cambus_writew(slv_addr, reg_addr, reg_data);
+    uint8_t data[4];
+    uint8_t size = 0;
+    data[size++] = (uint8_t)(reg_addr >> 8);
+    data[size++] = (uint8_t)reg_addr;
+    data[size++] = (uint8_t)(reg_data >> 8);
+    data[size++] = (uint8_t)reg_data;
+    status_t status;
+    while(1)
+    {
+	status = LPI2C_MasterStart(I2C_MASTER, slv_addr>>1, kLPI2C_Write);
+
+        if (kStatus_Success != status)
+        {
+            LPI2C_MasterStop(I2C_MASTER);
+	    return -1;
+        }
+        else
+        {
+            break;
+        }
+    }
+    LPI2C_MasterSend(I2C_MASTER, data, size);    
+    LPI2C_MasterStop(I2C_MASTER);
+    return 0;
 }
