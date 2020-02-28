@@ -17,13 +17,14 @@
 #include "omv_boardconfig.h"
 #include "common.h"
 
+#include "pin_mux.h"
+#include "hal_wrapper.h"
 #include "fsl_common.h"
 #include "fsl_debug_console.h"
 #include "fsl_clock.h"
 #include "fsl_lpspi.h"
 #include "fsl_edma.h"
 #include "fsl_lpspi_edma.h"
-//#include "fsl_lpspi_cmsis.h"
 #include "fsl_dmamux.h"
 #include "fsl_iomuxc.h"
 
@@ -61,35 +62,18 @@ static bool measurement_mode = false;
 static float min_temp = DEFAULT_MIN_TEMP;
 static float max_temp = DEFAULT_MAX_TEMP;
 
-static lpspi_master_config_t mstCfg;
-static clock_mux_t clockSel;
-static clock_div_t clockDiv;
-
-/*
-#define DRIVER_MASTER_SPI Driver_SPI4
-#define LEPTON_LPSPI_MASTER_IRQN (LPSPI4_IRQn)
-#define LEPTON_LPSPI_DEALY_COUNT 0xfffffU
-#define LEPTON_LPSPI_MASTER_DMA_BASEADDR DMA0
-*/
+//SPI / DMA Variables:
 static lpspi_master_config_t spiConfig;
 static lpspi_transfer_t spiTransfer;
 static edma_config_t dmaConfig;
-static edma_transfer_config_t dmaTransferConfig;
 static edma_handle_t rxHandle;
 static edma_handle_t txHandle;
 static lpspi_master_edma_handle_t spiDmaTransfer;
-
 
 #define LPSPI_CLOCK_SOURCE_SELECT  (1U)
 #define LPSPI_CLOCK_SOURCE_DIVIDER (7U)
 #define LPSPI_CLOCK_FREQ (CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (LPSPI_CLOCK_SOURCE_DIVIDER + 1U))
 #define LPSPI_MASTER_CLOCK_FREQ LPSPI_CLOCK_FREQ
-
-uint32_t LPSPI4_GetFreq(void)
-{
-    return LPSPI_CLOCK_FREQ;
-}
-
 
 LEP_CAMERA_PORT_DESC_T   LEPHandle;
 extern uint8_t _line_buf;
@@ -102,16 +86,6 @@ static volatile uint32_t vospi_pid = 0;
 static volatile uint32_t vospi_seg = 1;
 static uint32_t vospi_packets = 60;
 static int lepton_reset(sensor_t *sensor, bool measurement_mode);
-
-void LEPTON_SPI_IRQHandler(void)
-{
-    //HAL_SPI_IRQHandler(&SPIHandle);
-}
-
-void LEPTON_SPI_DMA_IRQHandler(void)
-{
-    //HAL_DMA_IRQHandler(SPIHandle.hdmarx);
-}
 
 static void lepton_sync()
 {
@@ -546,10 +520,8 @@ static int snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
     bool streaming = (streaming_cb != NULL); // Streaming mode.
 
     do {
-        //HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
         vospi_pid = VOSPI_FIRST_PACKET;
         vospi_seg = VOSPI_FIRST_SEGMENT;
-        //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
 
         LPSPI_MasterTransferEDMA(LPSPI4, &spiDmaTransfer, &spiTransfer);
 
@@ -587,10 +559,8 @@ static int snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
                 }
 
                 // Reset the VOSPI interface again.
-                //HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
                 vospi_pid = VOSPI_FIRST_PACKET;
                 vospi_seg = VOSPI_FIRST_SEGMENT;
-                //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
             }
         } while (vospi_pid < vospi_packets); // only checking one volatile var so atomic.
 
@@ -753,8 +723,7 @@ int lepton_init(sensor_t *sensor)
     spiTransfer.txData   = NULL;
     spiTransfer.rxData   = vospi_packet;  //LineBuffer
     spiTransfer.dataSize = VOSPI_PACKET_SIZE;
-    spiTransfer.configFlags = kLPSPI_MasterPcs0 | kLPSPI_MasterPcsContinuous |kLPSPI_MasterByteSwap;;
-
+    spiTransfer.configFlags = kLPSPI_MasterPcs0 | kLPSPI_MasterPcsContinuous |kLPSPI_MasterByteSwap;
     return 0;
 }
 #else
