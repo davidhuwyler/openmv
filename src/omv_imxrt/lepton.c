@@ -23,7 +23,7 @@
 #include "fsl_lpspi.h"
 #include "fsl_edma.h"
 #include "fsl_lpspi_edma.h"
-#include "fsl_lpspi_cmsis.h"
+//#include "fsl_lpspi_cmsis.h"
 #include "fsl_dmamux.h"
 #include "fsl_iomuxc.h"
 
@@ -65,17 +65,25 @@ static lpspi_master_config_t mstCfg;
 static clock_mux_t clockSel;
 static clock_div_t clockDiv;
 
+/*
 #define DRIVER_MASTER_SPI Driver_SPI4
 #define LEPTON_LPSPI_MASTER_IRQN (LPSPI4_IRQn)
 #define LEPTON_LPSPI_DEALY_COUNT 0xfffffU
-#define LEPTON_LPSPI_MASTER_DMA_MUX_BASEADDR DMAMUX
 #define LEPTON_LPSPI_MASTER_DMA_BASEADDR DMA0
+*/
+static lpspi_master_config_t spiConfig;
+static lpspi_transfer_t spiTransfer;
+static edma_config_t dmaConfig;
+static edma_transfer_config_t dmaTransferConfig;
+static edma_handle_t rxHandle;
+static edma_handle_t txHandle;
+static lpspi_master_edma_handle_t spiDmaTransfer;
+
 
 #define LPSPI_CLOCK_SOURCE_SELECT  (1U)
 #define LPSPI_CLOCK_SOURCE_DIVIDER (7U)
 #define LPSPI_CLOCK_FREQ (CLOCK_GetFreq(kCLOCK_Usb1PllPfd0Clk) / (LPSPI_CLOCK_SOURCE_DIVIDER + 1U))
 #define LPSPI_MASTER_CLOCK_FREQ LPSPI_CLOCK_FREQ
-#define LPSPI_SLAVE_CLOCK_FREQ LPSPI_CLOCK_FREQ
 
 uint32_t LPSPI4_GetFreq(void)
 {
@@ -107,11 +115,7 @@ void LEPTON_SPI_DMA_IRQHandler(void)
 
 static void lepton_sync()
 {
-    //HAL_SPI_Abort(&SPIHandle);
-
-    // Disable DMA IRQ
-    //HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
-
+    LPSPI_MasterTransferAbortEDMA(LPSPI4,&spiDmaTransfer);
     debug_printf("resync...\n");
     systick_sleep(200);
 
@@ -119,8 +123,7 @@ static void lepton_sync()
     vospi_pid = VOSPI_FIRST_PACKET;
     vospi_seg = VOSPI_FIRST_SEGMENT;
 
-    //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
-    //HAL_SPI_Receive_DMA(&SPIHandle, vospi_packet, VOSPI_PACKET_SIZE);
+    LPSPI_MasterTransferEDMA(LPSPI4, &spiDmaTransfer, &spiTransfer);
 }
 
 static uint16_t lepton_calc_crc(uint8_t *buf)
@@ -463,12 +466,12 @@ static int reset(sensor_t *sensor)
     return lepton_reset(sensor, false);
 }
 
-void HAL_SPI_RxCpltCallback(uint32_t event)
+
+void LPSPI_MasterUserCallback(LPSPI_Type *base, lpspi_master_edma_handle_t *handle, status_t status, void *userData)
 {
     (void) lepton_calc_crc; // to shut the compiler up.
 
     if (vospi_resync == true) {
-        DRIVER_MASTER_SPI.Receive(vospi_packet, VOSPI_PACKET_SIZE);
         return; // nothing to do here
     }
 
@@ -501,7 +504,7 @@ void HAL_SPI_RxCpltCallback(uint32_t event)
             }
         }        
     }
-    DRIVER_MASTER_SPI.Receive(vospi_packet, VOSPI_PACKET_SIZE);
+    LPSPI_MasterTransferEDMA(LPSPI4, &spiDmaTransfer, &spiTransfer);
 }
 
 static int sensor_check_buffsize(sensor_t *sensor)
@@ -548,7 +551,7 @@ static int snapshot(sensor_t *sensor, image_t *image, streaming_cb_t streaming_c
         vospi_seg = VOSPI_FIRST_SEGMENT;
         //HAL_NVIC_EnableIRQ(LEPTON_SPI_DMA_IRQn);
 
-        DRIVER_MASTER_SPI.Receive(vospi_packet, VOSPI_PACKET_SIZE);
+        LPSPI_MasterTransferEDMA(LPSPI4, &spiDmaTransfer, &spiTransfer);
 
         // Snapshot start tick
         uint32_t tick_start = HAL_GetTick();
@@ -715,65 +718,44 @@ int lepton_init(sensor_t *sensor)
     SENSOR_HW_FLAGS_SET(sensor, SENSOR_HW_FLAGS_FSYNC, 0);
     SENSOR_HW_FLAGS_SET(sensor, SENSOR_HW_FLAGS_JPEGE, 0);
 
-    // Configure the DMA handler for Transmission process
-    /*
-    DMAHandle.Instance                 = LEPTON_SPI_DMA_STREAM;
-    DMAHandle.Init.Request             = LEPTON_SPI_DMA_REQUEST;
-    DMAHandle.Init.Mode                = DMA_CIRCULAR;
-    DMAHandle.Init.Priority            = DMA_PRIORITY_HIGH;
-    DMAHandle.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-    // When the DMA is configured in direct mode (the FIFO is disabled), the source and
-    // destination transfer widths are equal, and both defined by PSIZE (MSIZE is ignored).
-    // Additionally, burst transfers are not possible (MBURST and PBURST are both ignored).
-    DMAHandle.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
-    DMAHandle.Init.FIFOThreshold       = DMA_FIFO_THRESHOLD_FULL;
-    // Note MBURST and PBURST are ignored.
-    DMAHandle.Init.MemBurst            = DMA_MBURST_INC4;
-    DMAHandle.Init.PeriphBurst         = DMA_PBURST_INC4;
-    DMAHandle.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
-    DMAHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
-    DMAHandle.Init.MemInc              = DMA_MINC_ENABLE;
-    DMAHandle.Init.PeriphInc           = DMA_PINC_DISABLE;
-
-    // NVIC configuration for DMA transfer complete interrupt
-    NVIC_SetPriority(LEPTON_SPI_DMA_IRQn, IRQ_PRI_DMA21);
-    HAL_NVIC_DisableIRQ(LEPTON_SPI_DMA_IRQn);
-
-    HAL_DMA_DeInit(&DMAHandle);
-    if (HAL_DMA_Init(&DMAHandle) != HAL_OK) {
-        // Initialization Error
-        return -1;
-    }
-*/
-
-
+    LPSPI4_InitPins();
     CLOCK_SetMux(kCLOCK_LpspiMux, LPSPI_CLOCK_SOURCE_SELECT);
     CLOCK_SetDiv(kCLOCK_LpspiDiv, LPSPI_CLOCK_SOURCE_DIVIDER);
 
-    /* DMA Mux init and EDMA init */
-    edma_config_t edmaConfig = {0};
-    EDMA_GetDefaultConfig(&edmaConfig);
-    EDMA_Init(LEPTON_LPSPI_MASTER_DMA_BASEADDR, &edmaConfig);
-    DMAMUX_Init(LEPTON_LPSPI_MASTER_DMA_MUX_BASEADDR);
+    spiConfig.baudRate = 10000000;
+    spiConfig.bitsPerFrame = 8;
+    spiConfig.cpol = kLPSPI_ClockPolarityActiveLow;
+    spiConfig.cpha = kLPSPI_ClockPhaseSecondEdge;
+    spiConfig.direction = kLPSPI_MsbFirst;
+    spiConfig.pcsToSckDelayInNanoSec = 1000000000 / spiConfig.baudRate;
+    spiConfig.lastSckToPcsDelayInNanoSec = 1000000000 / spiConfig.baudRate;
+    spiConfig.betweenTransferDelayInNanoSec = 1000000000 / spiConfig.baudRate;
+    spiConfig.whichPcs = kLPSPI_Pcs0; //ChipSelect, there are 4 possible Pins
+    spiConfig.pcsActiveHighOrLow = kLPSPI_PcsActiveLow;
+    spiConfig.pinCfg = kLPSPI_SdiInSdoOut;
+    spiConfig.dataOutConfig =kLpspiDataOutRetained;
+    LPSPI_MasterInit(LPSPI4, &spiConfig, LPSPI_MASTER_CLOCK_FREQ);
 
-    DRIVER_MASTER_SPI.Initialize(HAL_SPI_RxCpltCallback);
-    DRIVER_MASTER_SPI.PowerControl(ARM_POWER_FULL);
-    //DRIVER_MASTER_SPI.Control(ARM_SPI_MODE_MASTER, 1000000000/67);
-    DRIVER_MASTER_SPI.Control(ARM_SPI_MODE_MASTER, 500000);
+    DMAMUX_Init(DMAMUX);
+    EDMA_GetDefaultConfig(&dmaConfig);
+    dmaConfig.enableHaltOnError = false;
+    dmaConfig.enableContinuousLinkMode = true;
+    EDMA_Init(DMA0, &dmaConfig);
 
+    DMAMUX_SetSource(DMAMUX, 7 /*DMA RX Channel*/, kDmaRequestMuxLPSPI4Rx);
+    DMAMUX_EnableChannel(DMAMUX, 7);
+    EDMA_CreateHandle(&rxHandle, DMA0, 7);
 
-    //NVIC_EnableIRQ(LEPTON_LPSPI_MASTER_IRQN);	
-	//LPSPI_MasterInit(LPSPI4, &mstCfg, LPSPI_MASTER_CLOCK_FREQ);
-    //LPSPI_Reset(LPSPI4);
-    //LPSPI_ClearStatusFlags(LPSPI4,kLPSPI_AllStatusFlag);
-    ///----------------------------------------------------------
+    DMAMUX_SetSource(DMAMUX, 6 /*DMA TX Channel*/, kDmaRequestMuxLPSPI4Tx);
+    DMAMUX_EnableChannel(DMAMUX, 6);
+    EDMA_CreateHandle(&txHandle, DMA0, 6);
 
-    // Associate the initialized DMA handle to the the SPI handle
-    //__HAL_LINKDMA(&SPIHandle, hdmarx, DMAHandle);
-
-    // NVIC configuration for SPI transfer complete interrupt
-    //NVIC_SetPriority(LEPTON_SPI_IRQn, IRQ_PRI_DCMI);
-    //HAL_NVIC_EnableIRQ(LEPTON_SPI_IRQn);
+    LPSPI_MasterTransferCreateHandleEDMA(LPSPI4, &spiDmaTransfer, LPSPI_MasterUserCallback, NULL, &rxHandle,&txHandle);
+    
+    spiTransfer.txData   = NULL;
+    spiTransfer.rxData   = vospi_packet;  //LineBuffer
+    spiTransfer.dataSize = VOSPI_PACKET_SIZE;
+    spiTransfer.configFlags = kLPSPI_MasterPcs0 | kLPSPI_MasterPcsContinuous |kLPSPI_MasterByteSwap;;
 
     return 0;
 }

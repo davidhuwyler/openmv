@@ -581,6 +581,7 @@ int sensor_init()
     {
     case OV7725_ID:
         init_ret = ov7725_init(&s_sensor);
+        CsiFragModeInit();
         break;
     case MT9V034_ID:
         if (extclk_config(MT9V034_XCLK_FREQ) != 0) {
@@ -596,12 +597,15 @@ int sensor_init()
         break;
     case OV5640_ID:
         init_ret = ov5640_init(&s_sensor);
+        CsiFragModeInit();
         break;
     case OV2640_ID:
         init_ret = ov2640_init(&s_sensor);
+        CsiFragModeInit();
         break;
     case OV9650_ID:
         init_ret = ov9650_init(&s_sensor);
+        CsiFragModeInit();
         break;
     default:
         return -3;
@@ -612,8 +616,6 @@ int sensor_init()
         // Sensor init failed.
         return -4;
     }
-
-	CsiFragModeInit();
 
 	s_sensor.isWindowing = 0;
 	s_sensor.wndH = s_sensor.fb_h;
