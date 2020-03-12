@@ -26,6 +26,12 @@
 //Enables the LEPTON CAM
 #define OMV_ENABLE_LEPTON
 
+//Enables the Global shutter CAM
+//The Global Shutter Camera dosnt work with
+//the i.MX RT CSI Peripherie, because needed
+//PixelClock (26.66MHz) is not possible to generate
+//#define OMV_ENABLE_MT9V034
+
 // Have built-in RGB->LAB table.
 #define OMV_HAVE_LAB_TABLE
 

@@ -35,54 +35,17 @@
 #include "omv_boardconfig.h"
 #include "fsl_cache.h"
 
-//----- TODO Dave Defines only for testing -------
 #define USE_LineBuffer
-//-----
-
 #ifndef RAM_CODE
 #define RAM_CODE __attribute__((section(".ramfunc.$SRAM_ITC")))
-//#define RAM_CODE
 #endif
 
 #define OV_CHIP_ID      (0x0A)
 #define ON_CHIP_ID      (0x00)
 #define MAX_XFER_SIZE (0xFFFC)
 
-#define NO_LCD_MONITOR
-//#define OV7725_I2C LPI2C1
-
-/* LCD definition. */
-#define APP_ELCDIF LCDIF
-
-#define APP_LCD_HEIGHT 272
-#define APP_LCD_WIDTH 480
-#define APP_HSW 41
-#define APP_HFP 4
-#define APP_HBP 8
-#define APP_VSW 10
-#define APP_VFP 4
-#define APP_VBP 2
-#define APP_LCD_POL_FLAGS \
-    (kELCDIF_DataEnableActiveHigh | kELCDIF_VsyncActiveLow | kELCDIF_HsyncActiveLow | kELCDIF_DriveDataOnRisingClkEdge)
-
-#define APP_LCDIF_DATA_BUS kELCDIF_DataBus16Bit
-
-/* Display. */
-#define LCD_DISP_GPIO GPIO1
-#define LCD_DISP_GPIO_PIN 2
-/* Back light. */
-#define LCD_BL_GPIO GPIO2
-#define LCD_BL_GPIO_PIN 31
-
-#define APP_BPP 2
 /* Camera definition. */
-#define APP_CAMERA_HEIGHT 240
-#define APP_CAMERA_WIDTH 320
-#define APP_CAMERA_CONTROL_FLAGS (kCAMERA_HrefActiveHigh | kCAMERA_DataLatchOnRisingEdge)
-#define APP_FRAME_BUFFER_COUNT 4
-#define FRAME_BUFFER_ALIGN 64
 sensor_t s_sensor;
-
 /*static*/ volatile uint8_t s_isOmvSensorSnapshotReady;
 
 /*******************************************************************************
@@ -161,6 +124,13 @@ static int extclk_config(int frequency)
 		//(0)<<11 = divide by 1
 		setPixelClock(0x80000000 | (0<<9|0<<11)); //24Mhz PixClock
 		break;
+	case 30000000:
+		/* Set PixelClock. */
+		//2<<9 = Derive Clock from USBPLL:480Mhz/4=120Mhz
+		//(4-1)<<11 = divide by 4
+		setPixelClock(0x80000000 | (2<<9|(4-1)<<11)); //30Mhz PixClock
+		break;
+
 	default://Not Supported PixelClockFreq! Using 12MHz
 		setPixelClock(0x80000000 | (0<<9|(2-1)<<11)); //12Mhz PixClock
 		break;
@@ -196,7 +166,6 @@ void sensor_init0()
 
     // Set default quality
     JPEG_FB()->quality = ((JPEG_QUALITY_HIGH - JPEG_QUALITY_LOW) / 2) + JPEG_QUALITY_LOW;
-    //JPEG_FB()->quality = 35;
 
     // Set fb_enabled
     JPEG_FB()->enabled = fb_enabled;
@@ -359,8 +328,6 @@ void CsiFragModeInit(void) {
 	s_pCSI->CSICR2 = 3U << 30;	// INCR16 for RxFIFO DMA
 	s_pCSI->CSICR3 = 2U << 4;	// 16 double words to trigger DMA request
 	s_pCSI->CSIFBUF_PARA = 0;	// no stride
-
-
 	s_pCSI->CSICR18 = 13<<12 | 1<<18;	// HProt AHB bus protocol, write to memory when CSI_ENABLE is 1
 
 	NVIC_SetPriority(CSI_IRQn, IRQ_PRI_CSI);
@@ -588,6 +555,7 @@ int sensor_init()
             return -3;
         }
         init_ret = mt9v034_init(&s_sensor);
+        CsiFragModeInit();
         break;
     case LEPTON_ID:
         if (extclk_config(LEPTON_XCLK_FREQ) != 0) {

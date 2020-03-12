@@ -9,6 +9,9 @@
         "fsl_debug_console.h": "c",
         "driver_spi.h": "c",
         "fsl_lpspi.h": "c",
-        "rte_device.h": "c"
+        "rte_device.h": "c",
+        "mt9v034.h": "c",
+        "systick.h": "c",
+        "omv_boardconfig.h": "c"
     }
 }
