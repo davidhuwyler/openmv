@@ -50,6 +50,7 @@ TARGET ?= OPENMVRT_SEEED
 ifeq ($(TARGET), OPENMVRT_SEEED)
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)/
 OMV_DIR=omv_imxrt
+BOOTLDR_DIR=bootloader_imxrt
 else
 MP_BOARD_CONFIG_DIR=$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/boards/$(TARGET)/
 endif
@@ -136,8 +137,6 @@ MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/flegftl/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/usb_misc/
 MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/imxrt/boards/$(TARGET)/
-#MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/core/inc/
-#MP_CFLAGS += -I$(TOP_DIR)/$(MICROPY_DIR)/ports/stm32/usbdev/class/inc/
 MP_CFLAGS += -I$(MP_BOARD_CONFIG_DIR)
 
 OMV_CFLAGS += -I$(TOP_DIR)/$(OMV_DIR)/
@@ -207,22 +206,20 @@ endif
 
 
 ifeq ($(TARGET), OPENMVRT_SEEED)
-# Linker Flags
-#LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
-          -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
-          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S
-          
+# Linker Flags         
 LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
           -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
           -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S
 
 # Linker Flags
-BOOTLDR_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
-               -nostdlib -Wl,--gc-sections -Wl,-T$(BUILD)/$(BOOTLDR_DIR)/MIMXRT1052.lds.lds
+BOOTLDR_LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
+          -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
+          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(BOOTLDR_DIR)/SeeedArchMix.ld.S
 
 # Linker Flags
-UVC_LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
-               -nostdlib -Wl,--gc-sections -Wl,-T$(BUILD)/$(UVC_DIR)/MIMXRT1052.lds.lds
+UVC_LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
+          -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
+          -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(BOOTLDR_DIR)/SeeedArchMix.ld.S
 else
 # Linker Flags
 LDFLAGS = -mcpu=$(CPU) -mabi=aapcs-linux -mthumb -mfpu=$(FPU) -mfloat-abi=hard\
@@ -277,9 +274,7 @@ FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/video/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/osa/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/*.o)
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/xip/*.o)
-
 FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/mcusdk/sdmmc/port_usdhc_irq/*.o)
-#FIRM_OBJ += $(wildcard $(BUILD)/$(MICROPY_DIR)/flegftl/*.o)
 
 else
 FIRM_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
@@ -773,12 +768,13 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/drivers/,\
 	)
 
 # Bootloader object files
+ifeq ($(TARGET), OPENMVRT_SEEED)
+else
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/*.o)
-BOOT_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
-BOOT_OBJ += $(addprefix $(BUILD)/$(CMSIS_DIR)/src/st/,\
-	$(STARTUP).o                                \
-	system_stm32fxxx.o                          \
-	)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/xip/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/class/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/system/*.o)
+endif
 
 # UVC object files
 UVC_OBJ += $(wildcard $(BUILD)/$(UVC_DIR)/src/*.o)
@@ -856,6 +852,7 @@ $(BUILD):
 
 BOOTLOADER_OBJS: FIRMWARE_OBJS
 ifeq ($(TARGET), OPENMVRT_SEEED)
+	$(MAKE)  -C $(BOOTLDR_DIR)              BUILD=$(BUILD)/$(BOOTLDR_DIR)  CFLAGS="$(BOOTLDR_CFLAGS) -MMD"
 else
 	$(MAKE)  -C $(BOOTLDR_DIR)              BUILD=$(BUILD)/$(BOOTLDR_DIR)  CFLAGS="$(BOOTLDR_CFLAGS) -MMD"
 endif
@@ -869,9 +866,7 @@ endif
 FIRMWARE_OBJS:
 ifeq ($(TARGET), OPENMVRT_SEEED)
 	$(MAKE)  -C $(CMSIS_DIR)                BUILD=$(BUILD)/$(CMSIS_DIR)    CFLAGS="$(CFLAGS) -fno-strict-aliasing -MMD"
-#	$(MAKE)  -C $(STHAL_DIR)                BUILD=$(BUILD)/$(STHAL_DIR)    CFLAGS="$(CFLAGS) -MMD"
 	$(MAKE)  -C $(MICROPY_DIR)/ports/imxrt  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)
-#	$(MAKE)  -C $(MICROPY_DIR)/ports/stm32  BUILD=$(BUILD)/$(MICROPY_DIR)  BOARD=$(TARGET) QSTR_DEFS=$(OMV_QSTR_DEFS)
 	$(MAKE)  -C $(LEPTON_DIR)               BUILD=$(BUILD)/$(LEPTON_DIR)   CFLAGS="$(CFLAGS) -MMD"
 	$(MAKE)  -C $(MLX_DIR)                  BUILD=$(BUILD)/$(MLX_DIR)      CFLAGS="$(CFLAGS) -MMD"
 #	$(MAKE)  -C $(WINC1500_DIR)             BUILD=$(BUILD)/$(WINC1500_DIR) CFLAGS="$(CFLAGS) -MMD"
@@ -911,6 +906,15 @@ endif
 # up to the main fw image (MAIN_APP_ADDR), to generate a contiguous firmware.bin image.
 $(BOOTLOADER): FIRMWARE_OBJS BOOTLOADER_OBJS
 ifeq ($(TARGET), OPENMVRT_SEEED)
+	$(ECHO) "Create the Bootloader"
+	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(BOOTLDR_DIR)/SeeedArchMix.ld.S > $(BUILD)/MIMXRT1052.lds
+	$(ECHO) "Make the elf file..."
+	$(CC) $(BOOTLDR_LDFLAGS) $(BOOT_OBJ) -o $(FW_DIR)/$(BOOTLOADER).elf
+	$(ECHO) "Make the bin file..."
+	$(OBJCOPY) -Obinary $(FW_DIR)/$(BOOTLOADER).elf $(FW_DIR)/$(BOOTLOADER).bin
+	$(ECHO) "Make the dfu file..."
+	$(PYTHON) $(MKDFU) -b 0x08000000:$(FW_DIR)/$(BOOTLOADER).bin $(FW_DIR)/$(BOOTLOADER).dfu
+	$(OBJCOPY) -Obinary --pad-to=$(MAIN_APP_ADDR) --gap-fill=0xFF $(FW_DIR)/$(BOOTLOADER).elf $(FW_DIR)/$(BOOTLOADER).bin
 else
 	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(BOOTLDR_DIR)/stm32fxxx.ld.S > $(BUILD)/$(BOOTLDR_DIR)/stm32fxxx.lds
 	$(CC) $(BOOTLDR_LDFLAGS) $(BOOT_OBJ) -o $(FW_DIR)/$(BOOTLOADER).elf
