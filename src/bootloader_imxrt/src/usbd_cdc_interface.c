@@ -2,6 +2,7 @@
 #include "flash.h"
 //#include "usbdev/usbd_cdc.h"
 #include "omv_boardconfig.h"
+#include "usbd_cdc_interface.h"
 
 #define APP_RX_DATA_SIZE    (2048)
 #define APP_TX_DATA_SIZE    (2048)
@@ -53,12 +54,6 @@ static const    uint32_t bootloader_version = 0xABCD0002;
 /* USB handler declaration */
 //extern USBD_HandleTypeDef  USBD_Device;
 
-/* Private function prototypes -----------------------------------------------*/
-static int8_t CDC_Itf_Init(void);
-static int8_t CDC_Itf_DeInit(void);
-static int8_t CDC_Itf_Control(uint8_t cmd, uint8_t* pbuf, uint16_t length);
-static int8_t CDC_Itf_Receive(uint8_t* pbuf, uint32_t *Len);
-
 enum bootldr_cmd {
     BOOTLDR_START   = 0xABCD0001,
     BOOTLDR_RESET   = 0xABCD0002,
@@ -67,39 +62,6 @@ enum bootldr_cmd {
     BOOTLDR_FLASH   = 0xABCD0010,
 };
 
-// USBD_CDC_ItfTypeDef USBD_CDC_fops = 
-// {
-//     CDC_Itf_Init,
-//     CDC_Itf_DeInit,
-//     CDC_Itf_Control,
-//     CDC_Itf_Receive
-// };
-
-/**
- * @brief  CDC_Itf_Init
- *         Initializes the CDC media low layer
- * @param  None
- * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
- */
-static int8_t CDC_Itf_Init(void)
-{
-    // Set Application Buffers
-    //USBD_CDC_SetTxBuffer(&USBD_Device, UserTxBuffer, 0);
-    //USBD_CDC_SetRxBuffer(&USBD_Device, UserRxBuffer);
-
-    return (USBD_OK); 
-}
-
-/**
- * @brief  CDC_Itf_DeInit
- *         DeInitializes the CDC media low layer
- * @param  None
- * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
- */
-static int8_t CDC_Itf_DeInit(void)
-{
-    return USBD_OK;
-}
 
 /**
  * @brief  CDC_Itf_Control
@@ -109,7 +71,7 @@ static int8_t CDC_Itf_DeInit(void)
  * @param  Len: Number of data to be sent (in bytes)
  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
  */
-static int8_t CDC_Itf_Control (uint8_t cmd, uint8_t* pbuf, uint16_t length)
+int8_t CDC_Itf_Control (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 { 
     switch (cmd) {
         case CDC_SEND_ENCAPSULATED_COMMAND:
@@ -193,16 +155,10 @@ static int8_t CDC_Itf_Control (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 //     }
 // }
 
+
 void CDC_Tx(uint8_t *buf, uint32_t len)
 {
-    for (int i=0; i<len; i++) {
-        UserTxBuffer[UserTxBufPtrIn++] = buf[i];
-
-        /* To avoid buffer overflow */
-        if(UserTxBufPtrIn == APP_RX_DATA_SIZE) {
-            UserTxBufPtrIn = 0;
-        }
-    }
+    VCOM_Write(buf, len);
 }
 
 /**
@@ -213,15 +169,17 @@ void CDC_Tx(uint8_t *buf, uint32_t len)
  * @param  Len: Number of data received (in bytes)
  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
  */
-static int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t *Len)
+int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
 {
     static volatile uint32_t flash_offset;
 
     uint32_t *cmd_buf = (uint32_t*) Buf; 
     uint32_t cmd = *cmd_buf++;
 
+    //Debug... CDC_Tx(Buf,Len);
+
     switch (cmd) {
-        case BOOTLDR_START:
+        case BOOTLDR_START://0x48730
             flash_buf_idx = 0;
             ide_connected = 1;
             flash_offset = MAIN_APP_ADDR;
@@ -249,7 +207,7 @@ static int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t *Len)
         }
         case BOOTLDR_WRITE: {
             uint8_t *buf =  Buf + 4;
-            uint32_t len = *Len - 4;
+            uint32_t len = Len - 4;
             for (int i=0; i<len; i++) {
                 flash_buf[flash_buf_idx++] = buf[i];
                 if (flash_buf_idx == FLASH_BUF_SIZE) {
