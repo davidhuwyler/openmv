@@ -769,13 +769,21 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/drivers/,\
 
 # Bootloader object files
 ifeq ($(TARGET), OPENMVRT_SEEED)
-else
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/xip/*.o)
-BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/class/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/usb_misc/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/source/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/source/ehci/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/system/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/drivers/*.o)
+else
+# Bootloader object files
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(STHAL_DIR)/src/*.o)
+BOOT_OBJ += $(addprefix $(BUILD)/$(CMSIS_DIR)/src/st/,\
+	$(STARTUP).o                                \
+	system_stm32fxxx.o                          \
+	)
 endif
 
 # UVC object files
