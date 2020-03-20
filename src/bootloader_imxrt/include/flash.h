@@ -24,5 +24,22 @@
  * THE SOFTWARE.
  */
 
+#ifndef __FLASH_H_
+#define __FLASH_H_
+
+#include <stddef.h>
+#include "fsl_device_registers.h"
+#include "fsl_common.h"
+
+#define QSPI_FLASH_START_ADDRESS  0x60000000
+#define QSPI_FLASH_NOF_SECTORS_PER_BLOCK 64
+#define QSPI_FLASH_SECTOR_SIZE_BYTE 4*1024
+
+#define MAIN_APP_ADDR       0x60100000
+
+
+
 void flash_erase(uint32_t sector);
 void flash_write(const uint32_t *src, uint32_t dst, uint32_t size);
+
+#endif //__FLASH_H_

@@ -2,6 +2,7 @@
 #define _FLASH_QUADSPI_H_
 
 #include "mpconfigport.h"
+#define MICROPY_HW_HAS_QSPI_FLASH 1
 #if MICROPY_HW_HAS_QSPI_FLASH
 
 #include "fsl_flexspi.h"

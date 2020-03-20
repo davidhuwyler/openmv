@@ -23,79 +23,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-#include "flash_QuadSpi.h"
 #include "flash.h"
+#include "flash_QuadSpi.h"
 
 extern void __fatal_error();
 
+
+/* 
+    OpenMV sectors are translated to i.MX RT QSPI Blocks:
+
+    OpenMV sectors: 
+        Numbers:    0...15
+        SectorSize: 128kB
+
+    i.MX RT QSPI Blocks:
+        Numbers:    0...31
+        Blocksize:  256kB
+*/
 void flash_erase(uint32_t sector)
 {
-    // unlock
-    HAL_FLASH_Unlock();
+    uint32_t blockBaseAddress = QSPI_FLASH_START_ADDRESS + (sector*QSPI_FLASH_NOF_SECTORS_PER_BLOCK*QSPI_FLASH_SECTOR_SIZE_BYTE);
 
-    #if defined(MCU_SERIES_H7)
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS_BANK1 | FLASH_FLAG_ALL_ERRORS_BANK2);
-    #else
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
-                           FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
-    #endif
-
-    // erase the sector(s)
-    FLASH_EraseInitTypeDef EraseInitStruct;
-    EraseInitStruct.TypeErase    = TYPEERASE_SECTORS;
-    EraseInitStruct.VoltageRange = VOLTAGE_RANGE_3; // voltage range needs to be 2.7V to 3.6V
-    #if defined(MCU_SERIES_H7)
-    EraseInitStruct.Sector = (sector % 8);
-    if (sector < 8) {
-        EraseInitStruct.Banks = FLASH_BANK_1;
-    } else {
-        EraseInitStruct.Banks = FLASH_BANK_2;
+    for(uint8_t i = 0 ; i < QSPI_FLASH_NOF_SECTORS_PER_BLOCK ; i++)
+    {
+        flexspi_nor_flash_erase_sector(FLEXSPI, blockBaseAddress+(i*QSPI_FLASH_SECTOR_SIZE_BYTE));
     }
-    #else
-    EraseInitStruct.Sector = sector;
-    #endif
-    EraseInitStruct.NbSectors = 1;
-
-    uint32_t SectorError = 0;
-    if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) != HAL_OK) {
-        // error occurred during sector erase
-        HAL_FLASH_Lock(); // lock the flash
-        __fatal_error();
-    }
-
-    HAL_FLASH_Lock(); // lock the flash
 }
 
 void flash_write(const uint32_t *src, uint32_t dst, uint32_t size)
 {
-    // Unlock flash
-    HAL_FLASH_Unlock();
-
-    #if defined(MCU_SERIES_H7)
-    // Program the flash 32 bytes at a time.
+    // Program the flash 256 bytes at a time.
     for (int i=0; i<size/32; i++) {
-        if (HAL_FLASH_Program(TYPEPROGRAM_WORD, dst, (uint64_t)(uint32_t) src) != HAL_OK) {
+        if (flexspi_nor_flash_page_program(FLEXSPI, dst, src) != kStatus_Success) {
             // error occurred during flash write
-            HAL_FLASH_Lock(); // lock the flash
             __fatal_error();
         }
-        src += 8;
-        dst += 32;
+        src += 64;
+        dst += 256;
     }
-    #else
-    // Program the flash 4 bytes at a time.
-    for (int i=0; i<size/4; i++) {
-        if (HAL_FLASH_Program(TYPEPROGRAM_WORD, dst, *src) != HAL_OK) {
-            // error occurred during flash write
-            HAL_FLASH_Lock(); // lock the flash
-            __fatal_error();
-        }
-        src += 1;
-        dst += 4;
-    }
-    #endif
-
-    // lock the flash
-    HAL_FLASH_Lock();
 }

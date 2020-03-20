@@ -47,7 +47,6 @@ static volatile uint8_t  flash_buf[FLASH_BUF_SIZE];
 // Flash FS sector, main FW sector, max sector.
 // Sector (Blocks in iMX RT) 0..4 == Bootloader   0x60'000'000 .. 0x60'100'000 (1M)
 // Sector (Blocks in iMX RT) 5..31 == Applicaton  0x60'100'000 .. 0x60'800'000 (8M)
-#define MAIN_APP_ADDR 0x60100000
 static const    uint32_t flash_layout[3] = {31, 5, 31};
 static const    uint32_t bootloader_version = 0xABCD0002;
 

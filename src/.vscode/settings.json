@@ -13,6 +13,8 @@
         "mt9v034.h": "c",
         "systick.h": "c",
         "omv_boardconfig.h": "c",
-        "flash_quadspi.h": "c"
+        "flash_quadspi.h": "c",
+        "fsl_flexspi.h": "c",
+        "flash.h": "c"
     }
 }

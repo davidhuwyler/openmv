@@ -435,10 +435,13 @@ int flexspi_nor_init(void)
     uint8_t vendorID = 0;
     status_t status;
     flexspi_config_t config;
+    uint32_t primask;
 
     flexspi_clock_init();
 
+    primask = DisableGlobalIRQ();
     SCB_DisableDCache();
+    SCB_CleanDCache();
 
     /*Get FLEXSPI default settings and configure the flexspi. */
     FLEXSPI_GetDefaultConfig(&config);
@@ -475,7 +478,10 @@ int flexspi_nor_init(void)
         return status;
     }
 
+    SCB_InvalidateICache();
 	SCB_EnableDCache();
+    EnableGlobalIRQ(primask);
+
 	//SetFlexSPIDiv(DIV_READ);
 	return 0;
 }
