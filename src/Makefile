@@ -773,7 +773,9 @@ else
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/xip/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/class/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/usb_misc/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/system/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/drivers/*.o)
 endif
 
 # UVC object files

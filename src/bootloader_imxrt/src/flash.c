@@ -24,12 +24,8 @@
  * THE SOFTWARE.
  */
 
-#include STM32_HAL_H
+#include "flash_QuadSpi.h"
 #include "flash.h"
-
-#if defined (MCU_SERIES_F7)
-#define FLASH_FLAG_PGSERR   (FLASH_FLAG_ERSERR)
-#endif
 
 extern void __fatal_error();
 

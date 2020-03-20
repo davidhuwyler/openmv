@@ -42,7 +42,13 @@ static volatile uint8_t vcp_connected = 0;
 #define FLASH_BUF_SIZE  (64)
 static volatile uint32_t flash_buf_idx=0;
 static volatile uint8_t  flash_buf[FLASH_BUF_SIZE];
-static const    uint32_t flash_layout[3] = OMV_FLASH_LAYOUT;
+
+// Flash sectors for the bootloader.
+// Flash FS sector, main FW sector, max sector.
+// Sector (Blocks in iMX RT) 0..4 == Bootloader   0x60'000'000 .. 0x60'100'000 (1M)
+// Sector (Blocks in iMX RT) 5..31 == Applicaton  0x60'100'000 .. 0x60'800'000 (8M)
+#define MAIN_APP_ADDR 0x60100000
+static const    uint32_t flash_layout[3] = {31, 5, 31};
 static const    uint32_t bootloader_version = 0xABCD0002;
 
 /* USB handler declaration */
@@ -128,21 +134,22 @@ static int8_t CDC_Itf_Control (uint8_t cmd, uint8_t* pbuf, uint16_t length)
             break;
 
         case CDC_SET_LINE_CODING:
-            LineCoding.bitrate = (uint32_t) (pbuf[0] | (pbuf[1] << 8) |
-                                            (pbuf[2] << 16) | (pbuf[3] << 24));
-            LineCoding.format     = pbuf[4];
-            LineCoding.paritytype = pbuf[5];
-            LineCoding.datatype   = pbuf[6];
+            //UART params
+            // LineCoding.bitrate = (uint32_t) (pbuf[0] | (pbuf[1] << 8) |
+            //                                 (pbuf[2] << 16) | (pbuf[3] << 24));
+            // LineCoding.format     = pbuf[4];
+            // LineCoding.paritytype = pbuf[5];
+            // LineCoding.datatype   = pbuf[6];
             break;
 
         case CDC_GET_LINE_CODING:
-            pbuf[0] = (uint8_t)(LineCoding.bitrate);
-            pbuf[1] = (uint8_t)(LineCoding.bitrate >> 8);
-            pbuf[2] = (uint8_t)(LineCoding.bitrate >> 16);
-            pbuf[3] = (uint8_t)(LineCoding.bitrate >> 24);
-            pbuf[4] = LineCoding.format;
-            pbuf[5] = LineCoding.paritytype;
-            pbuf[6] = LineCoding.datatype;     
+            // pbuf[0] = (uint8_t)(LineCoding.bitrate);
+            // pbuf[1] = (uint8_t)(LineCoding.bitrate >> 8);
+            // pbuf[2] = (uint8_t)(LineCoding.bitrate >> 16);
+            // pbuf[3] = (uint8_t)(LineCoding.bitrate >> 24);
+            // pbuf[4] = LineCoding.format;
+            // pbuf[5] = LineCoding.paritytype;
+            // pbuf[6] = LineCoding.datatype;     
             break;
 
         case CDC_SET_CONTROL_LINE_STATE:
@@ -163,29 +170,29 @@ static int8_t CDC_Itf_Control (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 // This function is called to process outgoing data.  We hook directly into the
 // SOF (start of frame) callback so that it is called exactly at the time it is
 // needed (reducing latency), and often enough (increasing bandwidth).
-void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
-{
-    uint32_t buffptr;
-    uint32_t buffsize;
+// void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
+// {
+//     uint32_t buffptr;
+//     uint32_t buffsize;
 
-    if(UserTxBufPtrOut != UserTxBufPtrIn) {
-        if (UserTxBufPtrOut > UserTxBufPtrIn) /* Rollback */ {
-            buffsize = APP_RX_DATA_SIZE - UserTxBufPtrOut;
-        } else {
-            buffsize = UserTxBufPtrIn - UserTxBufPtrOut;
-        }
+//     if(UserTxBufPtrOut != UserTxBufPtrIn) {
+//         if (UserTxBufPtrOut > UserTxBufPtrIn) /* Rollback */ {
+//             buffsize = APP_RX_DATA_SIZE - UserTxBufPtrOut;
+//         } else {
+//             buffsize = UserTxBufPtrIn - UserTxBufPtrOut;
+//         }
 
-        buffptr = UserTxBufPtrOut;
-        USBD_CDC_SetTxBuffer(&USBD_Device, (uint8_t*)&UserTxBuffer[buffptr], buffsize);
+//         buffptr = UserTxBufPtrOut;
+//         USBD_CDC_SetTxBuffer(&USBD_Device, (uint8_t*)&UserTxBuffer[buffptr], buffsize);
 
-        if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_OK) {
-            UserTxBufPtrOut += buffsize;
-            if (UserTxBufPtrOut == APP_RX_DATA_SIZE) {
-                UserTxBufPtrOut = 0;
-            }
-        }
-    }
-}
+//         if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_OK) {
+//             UserTxBufPtrOut += buffsize;
+//             if (UserTxBufPtrOut == APP_RX_DATA_SIZE) {
+//                 UserTxBufPtrOut = 0;
+//             }
+//         }
+//     }
+// }
 
 void CDC_Tx(uint8_t *buf, uint32_t len)
 {
@@ -257,7 +264,7 @@ static int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t *Len)
     }
 
     // Initiate next USB packet transfer
-    USBD_CDC_ReceivePacket(&USBD_Device);
+    //USBD_CDC_ReceivePacket(&USBD_Device);
     return USBD_OK;
 }
 

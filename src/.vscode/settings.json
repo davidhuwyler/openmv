@@ -12,6 +12,7 @@
         "rte_device.h": "c",
         "mt9v034.h": "c",
         "systick.h": "c",
-        "omv_boardconfig.h": "c"
+        "omv_boardconfig.h": "c",
+        "flash_quadspi.h": "c"
     }
 }
