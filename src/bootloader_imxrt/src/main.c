@@ -1,6 +1,7 @@
 
 #include "omv_boardconfig.h"
 #include "flash.h"
+#include "usb_app.h"
 
 #define IDE_TIMEOUT     (1000)
 #define CONFIG_TIMEOUT  (2000)
@@ -33,12 +34,25 @@ void __attribute__((noreturn)) __stack_chk_fail(void)
 }
 #endif
 
+uint8_t HAL_Init(void)
+{
+    BOARD_ConfigMPU();
+    BOARD_InitPins();
+    BOARD_BootClockRUN();
+	NVIC_SetPriorityGrouping(3);
+
+	return 0;
+}
+
 int main()
 {
     // Override main app interrupt vector offset (set in system_stm32fxxx.c)
     //SCB->VTOR = FLASH_BASE | 0x0;
 
-    //HAL_Init();
+    HAL_Init();
+
+    pyb_usb_dev_init(USBD_VID, USBD_PID_CDC_MSC, USBD_MODE_CDC_MSC, NULL);
+    VCOM_Open();
 
     /* Init Device Library */
     //USBD_Init(&USBD_Device, &VCP_Desc, 0);

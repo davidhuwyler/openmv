@@ -86,13 +86,6 @@ uint32_t BOARD_DebugConsoleSrcFreq(void)
 
     return freq;
 }
-/* Initialize debug console. */
-void BOARD_InitDebugConsole(void)
-{
-    uint32_t uartClkSrcFreq = BOARD_DebugConsoleSrcFreq();
-
-    DbgConsole_Init(BOARD_DEBUG_UART_BASEADDR, BOARD_DEBUG_UART_BAUDRATE, BOARD_DEBUG_UART_TYPE, uartClkSrcFreq);
-}
 
 /* MPU configuration. */
 void BOARD_ConfigMPU(void)
