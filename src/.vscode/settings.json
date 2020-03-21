@@ -19,6 +19,7 @@
         "usb_app.h": "c",
         "unistd.h": "c",
         "unistd_gcc.h": "c",
-        "usbd_cdc_interface.h": "c"
+        "usbd_cdc_interface.h": "c",
+        "hal_wrapper.h": "c"
     }
 }

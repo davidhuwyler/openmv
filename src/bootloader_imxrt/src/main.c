@@ -1,6 +1,12 @@
 #include "omv_boardconfig.h"
 #include "flash.h"
 #include "usb_app.h"
+#include "clock_config.h"
+#include "fsl_common.h"
+#include "fsl_debug_console.h"
+#include "hal_wrapper.h"
+#include "systick.h"
+#include "irq.h"
 
 #define IDE_TIMEOUT     (1000)
 #define CONFIG_TIMEOUT  (2000)
@@ -73,11 +79,10 @@ int main()
     BOARD_InitPins();
     BOARD_BootClockRUN();
 	NVIC_SetPriorityGrouping(3);
-    
     //Systick 1ms
-	//SysTick_Config(CLOCK_GetFreq(kCLOCK_CoreSysClk) / (SYSTICK_PRESCALE * 1000U));
-    //HAL_NVIC_SetPriority(SysTick_IRQn, TickPriority ,0U);
 
+	HAL_InitTick(IRQ_PRI_SYSTICK);
+	SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
     USBD_SetVIDPIDRelease(USBD_VID, USBD_PID_CDC, 0x0200, true);
     if (USBD_SelectMode(USBD_MODE_CDC, NULL) < 0) {
         __fatal_error();
@@ -85,6 +90,8 @@ int main()
     USBAPP_Init();
 
     VCOM_Open();
+
+
 
     waitForUSBconnection();
 
