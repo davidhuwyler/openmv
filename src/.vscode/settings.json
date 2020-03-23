@@ -20,6 +20,10 @@
         "unistd.h": "c",
         "unistd_gcc.h": "c",
         "usbd_cdc_interface.h": "c",
-        "hal_wrapper.h": "c"
+        "hal_wrapper.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c"
     }
 }
