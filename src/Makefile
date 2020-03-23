@@ -771,7 +771,7 @@ FIRM_OBJ += $(addprefix $(BUILD)/$(MICROPY_DIR)/drivers/,\
 ifeq ($(TARGET), OPENMVRT_SEEED)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/xip/*.o)
-BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/usb_misc/*.o)
+BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/source/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/source/ehci/*.o)
 BOOT_OBJ += $(wildcard $(BUILD)/$(BOOTLDR_DIR)/src/usb/device/class/*.o)

@@ -179,7 +179,7 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
     //Debug... CDC_Tx(Buf,Len);
 
     switch (cmd) {
-        case BOOTLDR_START://0x48730
+        case BOOTLDR_START://0x48730 BOOTLDR_START
             flash_buf_idx = 0;
             ide_connected = 1;
             flash_offset = MAIN_APP_ADDR;

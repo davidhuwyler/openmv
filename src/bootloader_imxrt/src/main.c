@@ -7,6 +7,7 @@
 #include "hal_wrapper.h"
 #include "systick.h"
 #include "irq.h"
+#include "virtual_com.h"
 
 #define IDE_TIMEOUT     (1000)
 #define CONFIG_TIMEOUT  (2000)
@@ -79,17 +80,21 @@ int main()
     BOARD_InitPins();
     BOARD_BootClockRUN();
 	NVIC_SetPriorityGrouping(3);
-    //Systick 1ms
-
-	HAL_InitTick(IRQ_PRI_SYSTICK);
+    HAL_InitTick(IRQ_PRI_SYSTICK);
 	SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
-    USBD_SetVIDPIDRelease(USBD_VID, USBD_PID_CDC, 0x0200, true);
-    if (USBD_SelectMode(USBD_MODE_CDC, NULL) < 0) {
-        __fatal_error();
-    }
-    USBAPP_Init();
 
-    VCOM_Open();
+
+    InitUSB_CDC();
+    
+
+
+    // USBD_SetVIDPIDRelease(USBD_VID, USBD_MODE_CDC_MSC, 0x0200, true);
+    // if (USBD_SelectMode(USBD_MODE_CDC_MSC, NULL) < 0) {
+    //     __fatal_error();
+    // }
+    // USBAPP_Init();
+
+    // VCOM_Open();
 
 
 
