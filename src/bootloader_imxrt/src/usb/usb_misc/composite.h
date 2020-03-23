@@ -122,6 +122,40 @@ extern usb_status_t USB_DeviceCdcVcomInit(usb_device_composite_struct_t *deviceC
  */
 extern void USB_DeviceCdcVcomTask(void);
 
+/*!
+ * @brief MSC class specific callback function.
+ *
+ * This function handles the MSCclass specific requests.
+ *
+ * @param handle          The MSC class handle.
+ * @param event           The MSC class event type.
+ * @param param           The parameter of the class specific request.
+ *
+ * @return A USB error code or kStatus_USB_Success.
+ */
+extern usb_status_t USB_DeviceMscCallback(class_handle_t handle, uint32_t event, void *param);
+/*!
+ * @brief MSC disk device set configuration function.
+ *
+ * This function sets configuration for MSC class.
+ *
+ * @param handle The MSC class handle.
+ * @param configure The MSC class configure index.
+ *
+ * @return A USB error code or kStatus_USB_Success.
+ */
+extern usb_status_t USB_DeviceMscDiskSetConfigure(class_handle_t handle, uint8_t configure);
+/*!
+ * @brief MSC disk device initialization function.
+ *
+ * This function initializes the device with the composite device class information.
+ *
+ * @param deviceComposite The pointer to the composite device structure.
+ *
+ * @return A USB error code or kStatus_USB_Success.
+ */
+extern usb_status_t USB_DeviceMscDiskInit(usb_device_composite_struct_t *deviceComposite);
+
 extern void USBAPP_Init(void);
 extern int32_t USBAPP_Deinit(void);
 

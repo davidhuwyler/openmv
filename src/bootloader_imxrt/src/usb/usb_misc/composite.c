@@ -102,7 +102,7 @@ extern usb_device_class_struct_t g_usbdHidGenericConfig;
 /* USB device class information, support at most 5 classes */
 usb_device_class_config_struct_t g_classes[class_ndx_end] = {
 	// IMPORTANT! Class orders must be corresponding to "class_ndx_enum"
-    {NULL, (class_handle_t)NULL, &g_usbdMscConfig},
+    {USB_DeviceMscCallback, (class_handle_t)NULL, &g_usbdMscConfig},
     {USB_DeviceCdcVcomCallback, (class_handle_t)NULL, &g_usbdCdcVcomConfig},
 };
 
@@ -159,7 +159,7 @@ usb_status_t USB_DeviceCallback(usb_device_handle handle, uint32_t event, void *
                 g_composite.attach = 1;
                 g_composite.currentConfiguration = *temp8;
                 USB_DeviceCdcVcomSetConfigure(g_composite.cdcVcom.cdcAcmHandle, *temp8);
-                //USB_DeviceMscDiskSetConfigure(g_composite.mscDisk.mscHandle, *temp8);
+                USB_DeviceMscDiskSetConfigure(g_composite.mscDisk.mscHandle, *temp8);
                 error = kStatus_USB_Success;
             }
             break;
@@ -350,7 +350,7 @@ void USBAPP_Init(void)
         g_composite.cdcVcom.cdcAcmHandle = g_classesConfigList.config[1].classHandle;
 
         USB_DeviceCdcVcomInit(&g_composite);
-        //USB_DeviceMscDiskInit(&g_composite);
+        USB_DeviceMscDiskInit(&g_composite);
     }
 	USB_DeviceIsrEnable();
     USB_DeviceRun(g_composite.deviceHandle);	
