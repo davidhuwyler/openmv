@@ -74,7 +74,6 @@ int main()
     // Override main app interrupt vector offset (set in system_stm32fxxx.c)
     //SCB->VTOR = FLASH_BASE | 0x0;
 
-
 	BOARD_ConfigMPU();
     BOARD_InitPins();
     BOARD_BootClockRUN();
@@ -83,8 +82,9 @@ int main()
 
 	HAL_InitTick(IRQ_PRI_SYSTICK);
 	SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
-    USBD_SetVIDPIDRelease(USBD_VID, USBD_MODE_CDC_MSC, 0x0200, true);
-    if (USBD_SelectMode(USBD_MODE_CDC_MSC, NULL) < 0) {
+
+    USBD_SetVIDPIDRelease(USBD_VID, USBD_PID_CDC, 0x0200, true);
+    if (USBD_SelectMode(USBD_MODE_CDC, NULL) < 0) {
         __fatal_error();
     }
     USBAPP_Init();

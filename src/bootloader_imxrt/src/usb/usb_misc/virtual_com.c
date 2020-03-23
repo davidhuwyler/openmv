@@ -366,12 +366,12 @@ usb_status_t USB_DeviceCdcVcomCallback(class_handle_t handle, uint32_t event, vo
 				        //}
                         
 
-//                        send_packet(); //prime tx buffer
-//                        if (dbg_xfer_length) { //request has a device-to-host data phase
-//				            send_packet(); //prime tx buffer
-//				            if (dbg_xfer_length)
-//							s_omvSendIsToContinue = 1;
-//				        }
+                        send_packet(); //prime tx buffer
+                        if (dbg_xfer_length) { //request has a device-to-host data phase
+				            send_packet(); //prime tx buffer
+				            if (dbg_xfer_length)
+							s_omvSendIsToContinue = 1;
+				        }
 						
 					#ifdef HSRX
 						error = USB_DeviceCdcAcmRecv(handle, g_cfgFix.roCdcDicEpOutNdx, s_hsRx, VCP_RINGBLK_SIZE);	
@@ -460,8 +460,6 @@ usb_status_t USB_DeviceCdcVcomCallback(class_handle_t handle, uint32_t event, vo
             if (1 == acmReqParam->isSetup)
             {
             	*(acmReqParam->buffer) = s_lineCoding;
-
-                //memcpy(s_lineCoding,acmReqParam->buffer,sizeof(s_lineCoding));
 
 				CheckVCOMConnect();
 
