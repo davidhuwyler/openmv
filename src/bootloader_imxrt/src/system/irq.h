@@ -96,15 +96,6 @@ MP_DECLARE_CONST_FUN_OBJ_0(pyb_irq_stats_obj);
 // The following interrupts are arranged from highest priority to lowest
 // priority to make it a bit easier to figure out.
 
-//                           Priority   Sub-Priority
-//                           --------   ------------
-//#def  IRQ_PRI_SYSTICK         0
-//#def  IRQ_SUBPRI_SYSTICK                  0
-
-// csi irq frequency can be very high, so make it priority high
-#define IRQ_PRI_CSI             0
-#define IRQ_SUBPRI_CSI                      0
-
 // make high enough to do profiling
 #define IRQ_PRI_SYSTICK         1
 #define IRQ_SUBPRI_SYSTICK                  0
@@ -114,25 +105,9 @@ MP_DECLARE_CONST_FUN_OBJ_0(pyb_irq_stats_obj);
 #define IRQ_PRI_FLASH           2
 #define IRQ_SUBPRI_FLASH                    0
 
-// SDIO must be higher priority than USB
-#define IRQ_PRI_SDIO            4
-#define IRQ_SUBPRI_SDIO                     0
-
-#define IRQ_PRI_CAN             7
-#define IRQ_SUBPRI_CAN                      0
-
-// Interrupt priority for non-special timers.
-#define IRQ_PRI_TIMX            13
-#define IRQ_SUBPRI_TIMX                     0
-
-#define IRQ_PRI_EXTINT          13
-#define IRQ_SUBPRI_EXTINT                   0
-
-#define IRQ_PRI_UART            13
-#define IRQ_SUBPRI_UART                     0
 
 // USB IRQ can take long time to complete, so make priority low
-#define IRQ_PRI_USB_OTG1        14
+#define IRQ_PRI_USB_OTG1        0
 #define IRQ_SUBPRI_OTG_FS                   0
 
 #define IRQ_PRI_RTC_WKUP        14

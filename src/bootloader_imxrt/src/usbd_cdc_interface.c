@@ -51,6 +51,8 @@ static volatile uint8_t  flash_buf[FLASH_BUF_SIZE];
 static const    uint32_t flash_layout[3] = {31, 5, 31};
 static const    uint32_t bootloader_version = 0xABCD0002;
 
+static uint8_t initBootloaderAnser[] = { 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
+
 /* USB handler declaration */
 //extern USBD_HandleTypeDef  USBD_Device;
 
@@ -62,103 +64,10 @@ enum bootldr_cmd {
     BOOTLDR_FLASH   = 0xABCD0010,
 };
 
-
-/**
- * @brief  CDC_Itf_Control
- *         Manage the CDC class requests
- * @param  Cmd: Command code            
- * @param  Buf: Buffer containing command data (request parameters)
- * @param  Len: Number of data to be sent (in bytes)
- * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
- */
-int8_t CDC_Itf_Control (uint8_t cmd, uint8_t* pbuf, uint16_t length)
-{ 
-    switch (cmd) {
-        case CDC_SEND_ENCAPSULATED_COMMAND:
-            /* Add your code here */
-            break;
-
-        case CDC_GET_ENCAPSULATED_RESPONSE:
-            /* Add your code here */
-            break;
-
-        case CDC_SET_COMM_FEATURE:
-            /* Add your code here */
-            break;
-
-        case CDC_GET_COMM_FEATURE:
-            /* Add your code here */
-            break;
-
-        case CDC_CLEAR_COMM_FEATURE:
-            /* Add your code here */
-            break;
-
-        case CDC_SET_LINE_CODING:
-            //UART params
-            // LineCoding.bitrate = (uint32_t) (pbuf[0] | (pbuf[1] << 8) |
-            //                                 (pbuf[2] << 16) | (pbuf[3] << 24));
-            // LineCoding.format     = pbuf[4];
-            // LineCoding.paritytype = pbuf[5];
-            // LineCoding.datatype   = pbuf[6];
-            break;
-
-        case CDC_GET_LINE_CODING:
-            // pbuf[0] = (uint8_t)(LineCoding.bitrate);
-            // pbuf[1] = (uint8_t)(LineCoding.bitrate >> 8);
-            // pbuf[2] = (uint8_t)(LineCoding.bitrate >> 16);
-            // pbuf[3] = (uint8_t)(LineCoding.bitrate >> 24);
-            // pbuf[4] = LineCoding.format;
-            // pbuf[5] = LineCoding.paritytype;
-            // pbuf[6] = LineCoding.datatype;     
-            break;
-
-        case CDC_SET_CONTROL_LINE_STATE:
-            vcp_connected = length & 1; // wValue is passed in Len (bit of a hack)
-            break;
-
-        case CDC_SEND_BREAK:
-            /* Add your code here */
-            break;    
-
-        default:
-            break;
-    }
-
-    return (USBD_OK);
-}
-
-// This function is called to process outgoing data.  We hook directly into the
-// SOF (start of frame) callback so that it is called exactly at the time it is
-// needed (reducing latency), and often enough (increasing bandwidth).
-// void HAL_PCD_SOFCallback(PCD_HandleTypeDef *hpcd)
-// {
-//     uint32_t buffptr;
-//     uint32_t buffsize;
-
-//     if(UserTxBufPtrOut != UserTxBufPtrIn) {
-//         if (UserTxBufPtrOut > UserTxBufPtrIn) /* Rollback */ {
-//             buffsize = APP_RX_DATA_SIZE - UserTxBufPtrOut;
-//         } else {
-//             buffsize = UserTxBufPtrIn - UserTxBufPtrOut;
-//         }
-
-//         buffptr = UserTxBufPtrOut;
-//         USBD_CDC_SetTxBuffer(&USBD_Device, (uint8_t*)&UserTxBuffer[buffptr], buffsize);
-
-//         if (USBD_CDC_TransmitPacket(&USBD_Device) == USBD_OK) {
-//             UserTxBufPtrOut += buffsize;
-//             if (UserTxBufPtrOut == APP_RX_DATA_SIZE) {
-//                 UserTxBufPtrOut = 0;
-//             }
-//         }
-//     }
-// }
-
-
 void CDC_Tx(uint8_t *buf, uint32_t len)
 {
     VCOM_Write(buf, len);
+    //VCOM_OmvWriteAlways(buf,len);
 }
 
 /**
@@ -176,9 +85,14 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
     uint32_t *cmd_buf = (uint32_t*) Buf; 
     uint32_t cmd = *cmd_buf++;
 
-    //Debug... CDC_Tx(Buf,Len);
+    //CDC_Tx(Buf,Len); //Echo for debugging
 
     switch (cmd) {
+
+    	case 0xc8030:
+            CDC_Tx(initBootloaderAnser, sizeof(initBootloaderAnser));
+    		break;
+
         case BOOTLDR_START://0x48730 BOOTLDR_START
             flash_buf_idx = 0;
             ide_connected = 1;
@@ -219,9 +133,6 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
             break; 
         }
     }
-
-    // Initiate next USB packet transfer
-    //USBD_CDC_ReceivePacket(&USBD_Device);
     return USBD_OK;
 }
 
