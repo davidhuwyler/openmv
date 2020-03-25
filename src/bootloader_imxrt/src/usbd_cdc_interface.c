@@ -7,27 +7,7 @@
 #define APP_RX_DATA_SIZE    (2048)
 #define APP_TX_DATA_SIZE    (2048)
 
-//---------------------------------
-//ST HAL DEFINITIONS:
 #define USBD_OK 0
-#define CDC_SEND_ENCAPSULATED_COMMAND               0x00
-#define CDC_GET_ENCAPSULATED_RESPONSE               0x01
-#define CDC_SET_COMM_FEATURE                        0x02
-#define CDC_GET_COMM_FEATURE                        0x03
-#define CDC_CLEAR_COMM_FEATURE                      0x04
-#define CDC_SET_LINE_CODING                         0x20
-#define CDC_GET_LINE_CODING                         0x21
-#define CDC_SET_CONTROL_LINE_STATE                  0x22
-#define CDC_SEND_BREAK                              0x23
-//---------------------------------
-
-// USBD_CDC_LineCodingTypeDef LineCoding =
-// {
-//     115200, /* baud rate*/
-//     0x00,   /* stop bits-1*/
-//     0x00,   /* parity - none*/
-//     0x08    /* nb. of bits 8*/
-// };
 
 uint32_t BuffLength;
 uint32_t UserTxBufPtrIn = 0;    /* Increment this pointer or roll it back to
@@ -40,7 +20,7 @@ uint8_t UserTxBuffer[APP_TX_DATA_SIZE];/* Received Data over UART (CDC interface
 static volatile uint8_t ide_connected = 0;
 static volatile uint8_t vcp_connected = 0;
 
-#define FLASH_BUF_SIZE  (64)
+#define FLASH_BUF_SIZE  (256)
 static volatile uint32_t flash_buf_idx=0;
 static volatile uint8_t  flash_buf[FLASH_BUF_SIZE];
 
@@ -93,18 +73,18 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
             CDC_Tx(initBootloaderAnser, sizeof(initBootloaderAnser));
     		break;
 
-        case BOOTLDR_START://0x48730 BOOTLDR_START
+        case BOOTLDR_START://0xABCD0001
             flash_buf_idx = 0;
             ide_connected = 1;
             flash_offset = MAIN_APP_ADDR;
             // Send back the bootloader version.
             CDC_Tx((uint8_t *) &bootloader_version, 4);
             break;
-        case BOOTLDR_FLASH:
+        case BOOTLDR_FLASH: //0xABCD0010
             // Return flash layout (bootloader v2)
             CDC_Tx((uint8_t*) flash_layout, 12);
             break;
-        case BOOTLDR_RESET:
+        case BOOTLDR_RESET: //0xABCD0002
             ide_connected = 0;
             if (flash_buf_idx) {
                 // Pad and flush the last packet
@@ -114,12 +94,14 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
                 flash_write((uint32_t*)flash_buf, flash_offset, FLASH_BUF_SIZE);
             }
             break;
-        case BOOTLDR_ERASE: {
+        case BOOTLDR_ERASE: //0xABCD0004
+        {
             uint32_t sector = *cmd_buf; 
             flash_erase(sector);
             break; 
         }
-        case BOOTLDR_WRITE: {
+        case BOOTLDR_WRITE: //0xABCD0008
+        {
             uint8_t *buf =  Buf + 4;
             uint32_t len = Len - 4;
             for (int i=0; i<len; i++) {

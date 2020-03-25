@@ -78,19 +78,21 @@ int main()
     BOARD_InitPins();
     BOARD_BootClockRUN();
 	NVIC_SetPriorityGrouping(3);
-    //Systick 1ms
 
+    //init Systick 1ms
 	HAL_InitTick(IRQ_PRI_SYSTICK);
 	SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
 
+    flash_init();
+
+    //init USB CDC
     USBD_SetVIDPIDRelease(USBD_VID, USBD_PID_CDC, 0x0200, true);
     if (USBD_SelectMode(USBD_MODE_CDC, NULL) < 0) {
         __fatal_error();
     }
     USBAPP_Init();
-
     VCOM_Open();
-
+    
 
 
     waitForUSBconnection();

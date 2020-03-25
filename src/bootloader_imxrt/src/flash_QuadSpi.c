@@ -6,10 +6,6 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#include "mpconfigport.h"
-
-#if MICROPY_HW_HAS_QSPI_FLASH
- 
 #include "flash.h"
 #include "fsl_flexspi.h"
 #include "fsl_debug_console.h"
@@ -20,10 +16,6 @@
 #include "clock_config.h"
 #include "fsl_common.h"
 
-#ifndef RAM_CODE
-#define RAM_CODE __attribute__((section(".ramfunc.$SRAM_ITC")))
-//#define RAM_CODE
-#endif
 
 /*******************************************************************************
  * Definitions
@@ -92,6 +84,12 @@
  ******************************************************************************/
 static inline void flexspi_clock_init()
 {
+    /* Switch to PLL2 for XIP to avoid hardfault during re-initialize clock. */
+    CLOCK_InitSysPfd(kCLOCK_Pfd2, 24);    /* Set PLL2 PFD2 clock 396MHZ. */
+    CLOCK_SetMux(kCLOCK_FlexspiMux, 0x2); /* Choose PLL2 PFD2 clock as flexspi source clock. */
+    CLOCK_SetDiv(kCLOCK_FlexspiDiv, 2);   /* flexspi clock 133M. */
+
+#if 0    
 #if defined(XIP_EXTERNAL_FLASH) && (XIP_EXTERNAL_FLASH == 1)
     /* Switch to PLL2 for XIP to avoid hardfault during re-initialize clock. */
     CLOCK_InitSysPfd(kCLOCK_Pfd2, 24);    /* Set PLL2 PFD2 clock 396MHZ. */
@@ -104,6 +102,7 @@ static inline void flexspi_clock_init()
     CLOCK_InitUsb1Pfd(kCLOCK_Pfd0, 24);   /* Set PLL3 PFD0 clock 360MHZ. */
     CLOCK_SetMux(kCLOCK_FlexspiMux, 0x3); /* Choose PLL3 PFD0 clock as flexspi source clock. */
     CLOCK_SetDiv(kCLOCK_FlexspiDiv, 2);   /* flexspi clock 120M. */
+#endif
 #endif
 }
  
@@ -253,7 +252,48 @@ int flexspi_nor_flash_erase_sector(FLEXSPI_Type *base, uint32_t address)
     return status;
 }
 
-int flexspi_nor_flash_page_program(FLEXSPI_Type *base, uint32_t dstAddr, const uint32_t *src)
+status_t flexspi_nor_flash_program(FLEXSPI_Type *base, uint32_t dstAddr, const uint32_t *src, uint32_t length)
+{
+    status_t status;
+    flexspi_transfer_t flashXfer;
+
+    /* Write enable */
+    status = flexspi_nor_write_enable(base, dstAddr);
+
+    if (status != kStatus_Success)
+    {
+        return status;
+    }
+
+    /* Prepare page program command */
+    flashXfer.deviceAddress = dstAddr;
+    flashXfer.port          = kFLEXSPI_PortA1;
+    flashXfer.cmdType       = kFLEXSPI_Write;
+    flashXfer.SeqNumber     = 1;
+    flashXfer.seqIndex      = NOR_CMD_LUT_SEQ_IDX_PAGEPROGRAM_QUAD;
+    flashXfer.data          = (uint32_t *)src;
+    flashXfer.dataSize      = length;
+    status                  = FLEXSPI_TransferBlocking(base, &flashXfer);
+
+    if (status != kStatus_Success)
+    {
+        return status;
+    }
+
+    status = flexspi_nor_wait_bus_busy(base);
+
+    /* Do software reset. */
+#if defined(FSL_FEATURE_SOC_OTFAD_COUNT)
+    base->AHBCR |= FLEXSPI_AHBCR_CLRAHBRXBUF_MASK | FLEXSPI_AHBCR_CLRAHBTXBUF_MASK;
+    base->AHBCR &= ~(FLEXSPI_AHBCR_CLRAHBRXBUF_MASK | FLEXSPI_AHBCR_CLRAHBTXBUF_MASK);
+#else
+    FLEXSPI_SoftwareReset(base);
+#endif
+
+    return status;
+}
+
+status_t flexspi_nor_flash_page_program(FLEXSPI_Type *base, uint32_t dstAddr, const uint32_t *src)
 {
     status_t status;
     flexspi_transfer_t flashXfer;
@@ -284,7 +324,12 @@ int flexspi_nor_flash_page_program(FLEXSPI_Type *base, uint32_t dstAddr, const u
     status = flexspi_nor_wait_bus_busy(base);
 
     /* Do software reset. */
+#if defined(FSL_FEATURE_SOC_OTFAD_COUNT)
+    base->AHBCR |= FLEXSPI_AHBCR_CLRAHBRXBUF_MASK | FLEXSPI_AHBCR_CLRAHBTXBUF_MASK;
+    base->AHBCR &= ~(FLEXSPI_AHBCR_CLRAHBRXBUF_MASK | FLEXSPI_AHBCR_CLRAHBTXBUF_MASK);
+#else
     FLEXSPI_SoftwareReset(base);
+#endif
 
     return status;
 }
@@ -343,7 +388,7 @@ status_t flexspi_nor_erase_chip(FLEXSPI_Type *base)
 }
 
 flexspi_device_config_t deviceconfig = {
-    .flexspiRootClk       = 133000000,
+    .flexspiRootClk       = 133000000, //133MHzs
     .flashSize            = FLASH_SIZE,
     .CSIntervalUnit       = kFLEXSPI_CsIntervalUnit1SckCycle,
     .CSInterval           = 2,
@@ -360,7 +405,7 @@ flexspi_device_config_t deviceconfig = {
     .AHBWriteWaitInterval = 0,
 };
 
-const RAM_CODE uint32_t customLUT[CUSTOM_LUT_LENGTH] = {
+const uint32_t customLUT[CUSTOM_LUT_LENGTH] = {
     /* Normal read mode -SDR */
     /* Normal read mode -SDR */
     [4 * NOR_CMD_LUT_SEQ_IDX_READ_NORMAL] =
@@ -469,7 +514,7 @@ int flexspi_nor_init(void)
     {
         return status;
     }
-    PRINTF("Vendor ID: 0x%x\r\n", vendorID);
+    //PRINTF("Vendor ID: 0x%x\r\n", vendorID);
 
     /* Enter quad mode. */
     status = flexspi_nor_enable_quad_mode(EXAMPLE_FLEXSPI);
@@ -587,4 +632,4 @@ int main(void)
     }
 }
 #endif //0
-#endif //MICROPY_HW_HAS_QSPI_FLASH
+

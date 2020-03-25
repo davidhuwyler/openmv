@@ -173,11 +173,14 @@ InstructionTightCoupledMemory:  (SRAM_ITC)
         FILL(0xff)
         PROVIDE(__start_data_RAM2 = .) ;
 
+/*
 		*flash_QuadSpi.o (.text*)
 		*flash_QuadSpi.o (.rodata .rodata.* .constdata .constdata.*)
 
 		*fsl_flexspi.o (.text*)
 		*fsl_flexspi.o (.rodata .rodata.* .constdata .constdata.*)
+
+*/
 
         *(.ramfunc.$RAM2)
         *(.ramfunc.$SRAM_ITC)
@@ -246,6 +249,14 @@ DataTightCoupledMemory RAM:  (SRAM_DTC)
        _data = . ;
        *(vtable)
        *(.ramfunc*)
+
+		*flash_QuadSpi.o (.text*)
+		*flash_QuadSpi.o (.rodata .rodata.* .constdata .constdata.*)
+
+		*fsl_flexspi.o (.text*)
+		*fsl_flexspi.o (.rodata .rodata.* .constdata .constdata.*)
+
+
        *(.data*)
        *(.jpeg_tab)
        . = ALIGN(4) ;

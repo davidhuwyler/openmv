@@ -28,6 +28,11 @@
 
 extern void __fatal_error();
 
+void flash_init(void)
+{
+    flexspi_nor_init();
+}
+
 
 /* 
     OpenMV sectors are translated to i.MX RT QSPI Blocks:
@@ -40,20 +45,20 @@ extern void __fatal_error();
         Numbers:    0...31
         Blocksize:  256kB
 */
-void flash_erase(uint32_t sector)
+void flash_erase(uint32_t block)
 {
-    uint32_t blockBaseAddress = QSPI_FLASH_START_ADDRESS + (sector*QSPI_FLASH_NOF_SECTORS_PER_BLOCK*QSPI_FLASH_SECTOR_SIZE_BYTE);
+    uint32_t blockBaseAddress = (block*QSPI_FLASH_NOF_SECTORS_PER_BLOCK);
 
     for(uint8_t i = 0 ; i < QSPI_FLASH_NOF_SECTORS_PER_BLOCK ; i++)
     {
-        flexspi_nor_flash_erase_sector(FLEXSPI, blockBaseAddress+(i*QSPI_FLASH_SECTOR_SIZE_BYTE));
+        flexspi_nor_flash_erase_sector(FLEXSPI, (blockBaseAddress+i)*QSPI_FLASH_SECTOR_SIZE_BYTE);
     }
 }
 
 void flash_write(const uint32_t *src, uint32_t dst, uint32_t size)
 {
     // Program the flash 256 bytes at a time.
-    for (int i=0; i<size/32; i++) {
+    for (int i=0; i<size/256; i++) {
         if (flexspi_nor_flash_page_program(FLEXSPI, dst, src) != kStatus_Success) {
             // error occurred during flash write
             __fatal_error();

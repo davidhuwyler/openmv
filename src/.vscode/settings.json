@@ -24,6 +24,8 @@
         "array": "c",
         "string_view": "c",
         "initializer_list": "c",
-        "utility": "c"
+        "utility": "c",
+        "mpconfigport_minimal.h": "c",
+        "mpconfigport.h": "c"
     }
 }

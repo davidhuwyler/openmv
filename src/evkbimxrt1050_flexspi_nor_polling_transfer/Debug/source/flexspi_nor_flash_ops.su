@@ -1,0 +1,13 @@
+fsl_clock.h:969:20:CLOCK_SetMux	24	static
+fsl_clock.h:1006:20:CLOCK_SetDiv	24	static
+fsl_flexspi.h:387:20:FLEXSPI_SoftwareReset	16	static
+app.h:52:20:flexspi_clock_init	16	static
+flexspi_nor_flash_ops.c:29:10:flexspi_nor_write_enable	40	static
+flexspi_nor_flash_ops.c:46:10:flexspi_nor_wait_bus_busy	48	static
+flexspi_nor_flash_ops.c:98:10:flexspi_nor_enable_quad_mode	40	static
+flexspi_nor_flash_ops.c:135:10:flexspi_nor_flash_erase_sector	40	static
+flexspi_nor_flash_ops.c:174:10:flexspi_nor_flash_program	48	static
+flexspi_nor_flash_ops.c:215:10:flexspi_nor_flash_page_program	48	static
+flexspi_nor_flash_ops.c:256:10:flexspi_nor_get_vendor_id	40	static
+flexspi_nor_flash_ops.c:283:10:flexspi_nor_erase_chip	40	static
+flexspi_nor_flash_ops.c:314:6:flexspi_nor_flash_init	72	static

@@ -38,7 +38,7 @@
 #define MAIN_APP_ADDR       0x60100000
 
 
-
+void flash_init(void);
 void flash_erase(uint32_t sector);
 void flash_write(const uint32_t *src, uint32_t dst, uint32_t size);
 
