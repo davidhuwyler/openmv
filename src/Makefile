@@ -207,12 +207,12 @@ endif
 
 ifeq ($(TARGET), OPENMVRT_SEEED)
 # Linker Flags         
-LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
+LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Application.map -Xlinker --gc-sections -Xlinker\
           -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
           -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(OPENMVRT_SEEED_LD_DIR)/SeeedArchMix.ld.S
 
 # Linker Flags
-BOOTLDR_LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Project_Reference.map -Xlinker --gc-sections -Xlinker\
+BOOTLDR_LDFLAGS = -nostdlib -Xlinker -Map=MIMXRT1052xxxxB_Bootloader.map -Xlinker --gc-sections -Xlinker\
           -print-memory-usage -Xlinker --sort-section=alignment -Xlinker --cref -mcpu=cortex-m7\
           -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -T $(BOOTLDR_DIR)/SeeedArchMix.ld.S
 
@@ -920,7 +920,7 @@ endif
 $(BOOTLOADER): FIRMWARE_OBJS BOOTLOADER_OBJS
 ifeq ($(TARGET), OPENMVRT_SEEED)
 	$(ECHO) "Create the Bootloader"
-	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(BOOTLDR_DIR)/SeeedArchMix.ld.S > $(BUILD)/MIMXRT1052.lds
+	$(CPP) -P -E -I$(OMV_BOARD_CONFIG_DIR) $(BOOTLDR_DIR)/SeeedArchMix.ld.S > $(BUILD)/Bootloader.lds
 	$(ECHO) "Make the elf file..."
 	$(CC) $(BOOTLDR_LDFLAGS) $(BOOT_OBJ) -o $(FW_DIR)/$(BOOTLOADER).elf
 	$(ECHO) "Make the bin file..."
