@@ -98,8 +98,9 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
         {
             uint32_t sector = *cmd_buf; 
 
-            // Workaround: The last sector cannot be erased, otherwise the USB Connection fails
-            // The cause is not clear... So the number of blocks was increased by 1 so the last 
+            // Workaround: The last block of  <flash_layout[2]> cannot be "erased", 
+            // otherwise the USB Connection fails. The cause is not clear... 
+            // So the number of blocks in <flash_layout[2]> was increased by 1 so the last 
             // block does not exist and dont has to be erased
             if(sector != (QSPI_FLASH_LAST_BLOCK+1))
             {
