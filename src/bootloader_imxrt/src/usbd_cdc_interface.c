@@ -1,6 +1,6 @@
 #include <stdint.h>
-#include "flash.h"
-//#include "usbdev/usbd_cdc.h"
+#include "bootloader_flash.h"
+#include "hal_wrapper.h"
 #include "omv_boardconfig.h"
 #include "usbd_cdc_interface.h"
 
@@ -26,9 +26,9 @@ static volatile uint8_t  flash_buf[FLASH_BUF_SIZE];
 
 // Flash sectors for the bootloader.
 // Flash FS sector, main FW sector, max sector.
-// Sector (Blocks in iMX RT) 0..4 == Bootloader   0x60'000'000 .. 0x60'100'000 (1M)
-// Sector (Blocks in iMX RT) 5..31 == Applicaton  0x60'100'000 .. 0x60'800'000 (8M)
-static const    uint32_t flash_layout[3] = {31, 5, 31};
+// Sector (Blocks in iMX RT) 0..3 == Bootloader   0x60'000'000 .. 0x60'100'000 (1M)
+// Sector (Blocks in iMX RT) 4..31 == Applicaton  0x60'100'000 .. 0x60'800'000 (7M)
+static const    uint32_t flash_layout[3] = {1, QSPI_FLASH_MAIN_BLOCK, QSPI_FLASH_LAST_BLOCK+1 /* +1 is a woraround... see CDC_Itf_Receive-Function BOOTLDR_ERASE*/};
 static const    uint32_t bootloader_version = 0xABCD0002;
 
 static uint8_t initBootloaderAnser[] = { 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
@@ -76,7 +76,7 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
         case BOOTLDR_START://0xABCD0001
             flash_buf_idx = 0;
             ide_connected = 1;
-            flash_offset = MAIN_APP_ADDR;
+            flash_offset = QSPI_FLASH_APP_START_OFFSET;
             // Send back the bootloader version.
             CDC_Tx((uint8_t *) &bootloader_version, 4);
             break;
@@ -97,7 +97,14 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
         case BOOTLDR_ERASE: //0xABCD0004
         {
             uint32_t sector = *cmd_buf; 
-            flash_erase(sector);
+
+            // Workaround: The last sector cannot be erased, otherwise the USB Connection fails
+            // The cause is not clear... So the number of blocks was increased by 1 so the last 
+            // block does not exist and dont has to be erased
+            if(sector != (QSPI_FLASH_LAST_BLOCK+1))
+            {
+                flash_erase(sector);
+            }
             break; 
         }
         case BOOTLDR_WRITE: //0xABCD0008

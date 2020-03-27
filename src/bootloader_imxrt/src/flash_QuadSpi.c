@@ -6,10 +6,11 @@
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
-#include "flash.h"
+
 #include "fsl_flexspi.h"
 #include "fsl_debug_console.h"
 #include "fsl_cache.h"
+#include "bootloader_flash.h"
 
 #include "pin_mux.h"
 #include "board.h"

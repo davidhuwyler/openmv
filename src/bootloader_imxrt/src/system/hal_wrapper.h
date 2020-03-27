@@ -3,6 +3,7 @@
 #include "fsl_common.h"
 #include "fsl_gpio.h"
 #include "pin.h"
+#include "flash.h"
 typedef enum 
 {
   HAL_OK       = 0x00U,
@@ -19,6 +20,9 @@ typedef enum
 #define HAL_IS_BIT_CLR(REG, BIT)         (((REG) & (BIT)) == RESET)
 
 #define UNUSED(x) ((void)(x))
+
+
+#define __get_PRIMASK()             (__arm_rsr("PRIMASK"))
 
 
 #if !defined(__CC_ARM) && defined ( __GNUC__ )

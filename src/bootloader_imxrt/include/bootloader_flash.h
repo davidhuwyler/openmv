@@ -24,22 +24,29 @@
  * THE SOFTWARE.
  */
 
-#ifndef __FLASH_H_
-#define __FLASH_H_
+#ifndef __BOOTLOADER_FLASH_H_
+#define __BOOTLOADER_FLASH_H_
+
 
 #include <stddef.h>
 #include "fsl_device_registers.h"
 #include "fsl_common.h"
+#include "hal_wrapper.h"
 
 #define QSPI_FLASH_START_ADDRESS  0x60000000
 #define QSPI_FLASH_NOF_SECTORS_PER_BLOCK 64
 #define QSPI_FLASH_SECTOR_SIZE_BYTE 4*1024
 
-#define MAIN_APP_ADDR       0x60100000
+#define QSPI_FLASH_LAST_BLOCK 31
+#define QSPI_FLASH_MAIN_BLOCK 4
+#define QSPI_FLASH_MAIN_SECTOR (QSPI_FLASH_MAIN_BLOCK*QSPI_FLASH_NOF_SECTORS_PER_BLOCK)
+#define QSPI_FLASH_APP_START_OFFSET (QSPI_FLASH_MAIN_SECTOR*QSPI_FLASH_SECTOR_SIZE_BYTE)
+
+#define MAIN_APP_ADDR           (QSPI_FLASH_START_ADDRESS+(QSPI_FLASH_MAIN_SECTOR*QSPI_FLASH_SECTOR_SIZE_BYTE))
 
 
 void flash_init(void);
 void flash_erase(uint32_t sector);
 void flash_write(const uint32_t *src, uint32_t dst, uint32_t size);
 
-#endif //__FLASH_H_
+#endif //__BOOTLOADER_FLASH_H_

@@ -23,7 +23,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "flash.h"
+#include "bootloader_flash.h"
 #include "flash_QuadSpi.h"
 
 extern void __fatal_error();
@@ -35,7 +35,7 @@ void flash_init(void)
 
 
 /* 
-    OpenMV sectors are translated to i.MX RT QSPI Blocks:
+    STM32 (OpenMV) sectors are translated to i.MX RT QSPI Blocks:
 
     OpenMV sectors: 
         Numbers:    0...15
@@ -47,17 +47,31 @@ void flash_init(void)
 */
 void flash_erase(uint32_t block)
 {
-    uint32_t blockBaseAddress = (block*QSPI_FLASH_NOF_SECTORS_PER_BLOCK);
+    uint32_t block_sector_number = (block*QSPI_FLASH_NOF_SECTORS_PER_BLOCK);
 
-    for(uint8_t i = 0 ; i < QSPI_FLASH_NOF_SECTORS_PER_BLOCK ; i++)
+    uint32_t primask;
+    primask = DisableGlobalIRQ();
+
+    uint32_t status;
+
+    for(int i = 0 ; i < QSPI_FLASH_NOF_SECTORS_PER_BLOCK ; i++)
     {
-        flexspi_nor_flash_erase_sector(FLEXSPI, (blockBaseAddress+i)*QSPI_FLASH_SECTOR_SIZE_BYTE);
+        status = flexspi_nor_flash_erase_sector(FLEXSPI, (block_sector_number+i)*QSPI_FLASH_SECTOR_SIZE_BYTE);
+        if (status != kStatus_Success)
+        {
+            return;
+        }
     }
+
+    EnableGlobalIRQ(primask);
 }
 
 void flash_write(const uint32_t *src, uint32_t dst, uint32_t size)
 {
     // Program the flash 256 bytes at a time.
+    uint32_t primask;
+    primask = DisableGlobalIRQ();
+
     for (int i=0; i<size/256; i++) {
         if (flexspi_nor_flash_page_program(FLEXSPI, dst, src) != kStatus_Success) {
             // error occurred during flash write
@@ -66,4 +80,6 @@ void flash_write(const uint32_t *src, uint32_t dst, uint32_t size)
         src += 64;
         dst += 256;
     }
+
+    EnableGlobalIRQ(primask);
 }

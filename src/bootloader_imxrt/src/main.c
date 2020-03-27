@@ -1,5 +1,5 @@
 #include "omv_boardconfig.h"
-#include "flash.h"
+#include "bootloader_flash.h"
 #include "usb_app.h"
 #include "clock_config.h"
 #include "fsl_common.h"

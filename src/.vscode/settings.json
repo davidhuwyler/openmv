@@ -26,6 +26,9 @@
         "initializer_list": "c",
         "utility": "c",
         "mpconfigport_minimal.h": "c",
-        "mpconfigport.h": "c"
+        "mpconfigport.h": "c",
+        "fsl_device_registers.h": "c",
+        "bootloader_flash.h": "c",
+        "fsl_cache.h": "c"
     }
 }
