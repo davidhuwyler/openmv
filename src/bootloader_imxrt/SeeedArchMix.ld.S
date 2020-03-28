@@ -30,8 +30,10 @@ MEMORY
 {
   /* Define each memory region */
   BOARD_FLASH (rx) : ORIGIN = 0x60000000, LENGTH = 0x100000 /* 1M bytes (alias Flash) */
+  SRAM_DTC (rwx) : ORIGIN = 0x20000000, LENGTH = 0x68000 /* 416K bytes (alias RAM) */
   SRAM_ITC (rwx) : ORIGIN = 0x0, LENGTH = 0x5000 /* 20K bytes (alias RAM2) */
   SRAM_OC (rwx) : ORIGIN = 0x20200000, LENGTH = 0x10000 /* 64K bytes (alias RAM3) */
+  BOARD_SDRAM (rwx) : ORIGIN = 0x80000000, LENGTH = 0x2000000 /* 32M bytes (alias RAM4) */  
 }
 
   /* Define a symbol for the top of each memory region */
@@ -39,6 +41,10 @@ MEMORY
   __base_Flash = 0x60000000 ; /* Flash */  
   __top_BOARD_FLASH = 0x60000000 + 0x100000 ; /* 1M bytes */
   __top_Flash = 0x60000000 + 0x100000 ; /* 1M bytes */
+  __base_SRAM_DTC = 0x20000000  ; /* SRAM_DTC */  
+  __base_RAM = 0x20000000 ; /* RAM */  
+  __top_SRAM_DTC = 0x20000000 + 0x68000 ; /* 416K bytes */
+  __top_RAM = 0x20000000 + 0x68000 ; /* 416K bytes */
   __base_SRAM_ITC = 0x0  ; /* SRAM_ITC */  
   __base_RAM2 = 0x0 ; /* RAM2 */  
   __top_SRAM_ITC = 0x0 + 0x5000 ; /* 20K bytes */
@@ -47,7 +53,10 @@ MEMORY
   __base_RAM3 = 0x20200000 ; /* RAM3 */  
   __top_SRAM_OC = 0x20200000 + 0x10000 ; /* 64K bytes */
   __top_RAM3 = 0x20200000 + 0x10000 ; /* 64K bytes */
-
+  __base_BOARD_SDRAM = 0x80000000  ; /* BOARD_SDRAM */  
+  __base_RAM4 = 0x80000000 ; /* RAM4 */  
+  __top_BOARD_SDRAM = 0x80000000 + 0x2000000 ; /* 32M bytes */  
+  __top_RAM4 = 0x80000000 + 0x2000000 ; /* 32M bytes */
 /*
 Rest:
 */
@@ -94,6 +103,9 @@ ExternalFlash:  (BOARD_FLASH)
         LONG(LOADADDR(.data_RAM3));
         LONG(    ADDR(.data_RAM3));
         LONG(  SIZEOF(.data_RAM3));
+        LONG(LOADADDR(.data_RAM4));
+        LONG(    ADDR(.data_RAM4));
+        LONG(  SIZEOF(.data_RAM4));
         __data_section_table_end = .;
         __bss_section_table = .;
         LONG(    ADDR(.bss));
@@ -102,6 +114,8 @@ ExternalFlash:  (BOARD_FLASH)
         LONG(  SIZEOF(.bss_RAM2));
         LONG(    ADDR(.bss_RAM3));
         LONG(  SIZEOF(.bss_RAM3));
+        LONG(    ADDR(.bss_RAM4));
+        LONG(  SIZEOF(.bss_RAM4));
         __bss_section_table_end = .;
         __section_table_end = . ;
         /* End of Global Section Table */
@@ -197,6 +211,21 @@ OnChip Memory:  (SRAM_OC)
 /*---------------------------------------------------------------------------------
 External RAM:  (BOARD_SDRAM)
 ---------------------------------------------------------------------------------*/
+    /* DATA section for BOARD_SDRAM */
+
+    .data_RAM4 : ALIGN(4)
+    {
+        FILL(0xff)
+        PROVIDE(__start_data_RAM4 = .) ;
+        *(.ramfunc.$RAM4)
+        *(.ramfunc.$BOARD_SDRAM)
+        *(.data.$RAM4)
+        *(.data.$BOARD_SDRAM)
+        *(.data.$RAM4.*)
+        *(.data.$BOARD_SDRAM.*)
+        . = ALIGN(4) ;
+        PROVIDE(__end_data_RAM4 = .) ;
+     } > BOARD_SDRAM AT>BOARD_FLASH
     /* MAIN DATA SECTION */
     .uninit_RESERVED (NOLOAD) :
     {
@@ -205,6 +234,22 @@ External RAM:  (BOARD_SDRAM)
        . = ALIGN(4) ;
         _end_uninit_RESERVED = .;
     } > SRAM_ITC
+
+/*---------------------------------------------------------------------------------
+DataTightCoupledMemory RAM:  (SRAM_DTC) --> Moved to ITC
+---------------------------------------------------------------------------------*/
+    /* Main DATA section (SRAM_DTC) */
+    .data : ALIGN(4)
+    {
+       FILL(0xff)
+       _data = . ;
+       *(vtable)
+       *(.ramfunc*)
+       *(.data*)
+       *(.jpeg_tab)
+       . = ALIGN(4) ;
+       _edata = . ;
+    } > SRAM_ITC AT>BOARD_FLASH
 
 
 /*---------------------------------------------------------------------------------
@@ -236,6 +281,18 @@ BSS (uninitialized Data) in all memo Sections
        PROVIDE(__end_bss_RAM3 = .) ;
     } > SRAM_OC
 
+    /* BSS section for BOARD_SDRAM */
+    .bss_RAM4 :
+    {
+       . = ALIGN(4) ;
+       PROVIDE(__start_bss_RAM4 = .) ;
+       *(.bss.$RAM4)
+       *(.bss.$BOARD_SDRAM)
+       *(.bss.$RAM4.*)
+       *(.bss.$BOARD_SDRAM.*)
+       . = ALIGN (. != 0 ? 4 : 1) ; /* avoid empty segment */
+       PROVIDE(__end_bss_RAM4 = .) ;
+    } > BOARD_SDRAM
 
     /* MAIN BSS SECTION */
     .bss :
@@ -273,6 +330,27 @@ NOINIT in all memo Sections
        *(.noinit.$SRAM_OC.*)
        . = ALIGN(4) ;
     } > SRAM_OC
+
+    /* NOINIT section for BOARD_SDRAM */
+    .noinit_RAM4 (NOLOAD) :
+    {
+       . = ALIGN(4) ;
+       *(.noinit.$RAM4)
+       *(.noinit.$BOARD_SDRAM)
+       *(.noinit.$RAM4.*)
+       *(.noinit.$BOARD_SDRAM.*)
+       . = ALIGN(4) ;
+    } > BOARD_SDRAM
+
+    /* DEFAULT NOINIT SECTION */
+    .noinit (NOLOAD):
+    {
+         . = ALIGN(4) ;
+        _noinit = .;
+        *(.noinit*)
+         . = ALIGN(4) ;
+        _end_noinit = .;
+    } > SRAM_DTC
 
 
 
