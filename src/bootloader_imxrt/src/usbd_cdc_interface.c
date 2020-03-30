@@ -4,9 +4,6 @@
 #include "omv_boardconfig.h"
 #include "usbd_cdc_interface.h"
 
-#define APP_RX_DATA_SIZE    (2048)
-#define APP_TX_DATA_SIZE    (2048)
-
 #define USBD_OK 0
 
 uint32_t BuffLength;
@@ -14,8 +11,6 @@ uint32_t UserTxBufPtrIn = 0;    /* Increment this pointer or roll it back to
                                    start address when data are received over USART */
 uint32_t UserTxBufPtrOut = 0;   /* Increment this pointer or roll it back to
                                    start address when data are sent over USB */
-uint8_t UserRxBuffer[APP_RX_DATA_SIZE];/* Received Data over USB are stored in this buffer */
-uint8_t UserTxBuffer[APP_TX_DATA_SIZE];/* Received Data over UART (CDC interface) are stored in this buffer */
 
 static volatile uint8_t ide_connected = 0;
 static volatile uint8_t vcp_connected = 0;
