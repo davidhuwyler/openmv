@@ -481,6 +481,19 @@ IOMUXC_SetPinMux(
   IOMUXC_SetPinConfig(
 		  IOMUXC_GPIO_EMC_41_GPIO3_IO27,
       0x017089u);
+
+
+    IOMUXC_SetPinMux(
+      IOMUXC_GPIO_AD_B0_09_GPIO1_IO09,        /* GPIO_AD_B0_09 is configured as GPIO1_IO09 */
+      0U);   
+    IOMUXC_SetPinMux(
+      IOMUXC_GPIO_AD_B0_10_GPIO1_IO10,        /* GPIO_AD_B0_09 is configured as GPIO1_IO09 */
+      0U); 
+
+    IOMUXC_SetPinMux(
+      IOMUXC_GPIO_AD_B0_11_GPIO1_IO11,        /* GPIO_AD_B0_09 is configured as GPIO1_IO09 */
+      0U);     
+
 }
 
 void LPSPI4_InitPins(void) {

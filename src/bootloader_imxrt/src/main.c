@@ -4,6 +4,7 @@
 #include "clock_config.h"
 #include "fsl_common.h"
 #include "fsl_debug_console.h"
+#include "fsl_gpio.h"
 #include "hal_wrapper.h"
 #include "systick.h"
 #include "irq.h"
@@ -26,20 +27,28 @@
 #define USBD_PID_CDC     (0xABD1)
 
 
+
+#define LED_R_PORT GPIO1
+#define LED_R_PIN 9
+#define LED_G_PORT GPIO1
+#define LED_G_PIN 10
+#define LED_B_PORT GPIO1
+#define LED_B_PIN 11
+
 bool cdcIsConnected = false;
 
 void __flash_led()
 {
-    // HAL_GPIO_TogglePin(OMV_BOOTLDR_LED_PORT, OMV_BOOTLDR_LED_PIN);
-    // HAL_Delay(100);
-    // HAL_GPIO_TogglePin(OMV_BOOTLDR_LED_PORT, OMV_BOOTLDR_LED_PIN);
-    // HAL_Delay(100);
+	GPIO_PortToggle(LED_R_PORT, 1u << LED_R_PIN);
+    HAL_Delay(100);
+    GPIO_PortToggle(LED_R_PORT, 1u << LED_R_PIN);
+    HAL_Delay(100);
 }
 
 void __attribute__((noreturn)) __fatal_error()
 {
     while (1) {
-        // __flash_led();
+        __flash_led();
     }
 }
 
@@ -61,14 +70,6 @@ void setCDCconnect()
     cdcIsConnected= true;
 }
 
-void waitForUSBconnection()
-{
-	for(uint32_t i = 0 ; i<50000000 ; i++)
-	{
-		__asm volatile("nop");
-	}
-}
-
 //Systick Interrupt Service Routine
 void SysTick_Handler(void) {
     extern uint32_t uwTick;	
@@ -84,10 +85,8 @@ static void jump_to_application(uint32_t applicationAddress, uint32_t stackPoint
     
     __DSB(); __ISB();
 
-
     //Disable Interrupts:
     __asm volatile ("cpsid i");
-
 
     // Create the function call to the user application.
     // Static variables are needed since changed the stack pointer out from under the compiler
@@ -109,14 +108,19 @@ static void jump_to_application(uint32_t applicationAddress, uint32_t stackPoint
 
 int main()
 {
-    // Override main app interrupt vector offset (set in system_stm32fxxx.c)
-    //SCB->VTOR = FLASH_BASE | 0x0;
-
 	BOARD_ConfigMPU();
     BOARD_InitPins();
     BOARD_BootClockRUN();
 	NVIC_SetPriorityGrouping(3);
 
+	//Init LEDs and turn them off (Pin == High)
+    gpio_pin_config_t led_config = {kGPIO_DigitalOutput, 0, kGPIO_NoIntmode};
+    GPIO_PinInit(LED_R_PORT, LED_R_PIN, &led_config);
+    GPIO_PinInit(LED_G_PORT, LED_G_PIN, &led_config);
+    GPIO_PinInit(LED_B_PORT, LED_B_PIN, &led_config);
+    GPIO_SetPinsOutput(LED_R_PORT, 1u << LED_R_PIN);
+    GPIO_SetPinsOutput(LED_G_PORT, 1u << LED_G_PIN);
+    GPIO_SetPinsOutput(LED_B_PORT, 1u << LED_B_PIN);
 
     //init Systick 1ms
     SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
@@ -133,7 +137,6 @@ int main()
     VCOM_Open();
     
     HAL_Delay(500);
-    //waitForUSBconnection();
 
     if (cdcIsConnected) {
         //uint32_t start = HAL_GetTick();
