@@ -69,6 +69,44 @@ void waitForUSBconnection()
 	}
 }
 
+//Systick Interrupt Service Routine
+void SysTick_Handler(void) {
+    extern uint32_t uwTick;	
+    uwTick += 1;
+	__DSB();
+}
+
+static void jump_to_application(uint32_t applicationAddress, uint32_t stackPointer,uint32_t vectorTable)
+{
+    ARM_MPU_Disable();
+    SCB_DisableDCache();
+    SCB_DisableICache();
+    
+    __DSB(); __ISB();
+
+
+    //Disable Interrupts:
+    __asm volatile ("cpsid i");
+
+
+    // Create the function call to the user application.
+    // Static variables are needed since changed the stack pointer out from under the compiler
+    // we need to ensure the values we are using are not stored on the previous stack
+    static uint32_t s_stackPointer = 0;
+    s_stackPointer = stackPointer;
+    static void (*farewellBootloader)(void) = 0;
+    farewellBootloader = (void (*)(void))applicationAddress;
+
+    // Set the VTOR to the application vector table address.
+    SCB->VTOR = (uint32_t)vectorTable;
+
+    // Set stack pointers to the application stack pointer.
+    __set_MSP(s_stackPointer);
+
+    // Jump to the application.
+    farewellBootloader();
+}
+
 int main()
 {
     // Override main app interrupt vector offset (set in system_stm32fxxx.c)
@@ -79,10 +117,11 @@ int main()
     BOARD_BootClockRUN();
 	NVIC_SetPriorityGrouping(3);
 
-    //init Systick 1ms
-	HAL_InitTick(IRQ_PRI_SYSTICK);
-	SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
 
+    //init Systick 1ms
+    SysTick->CTRL &= SysTick_CTRL_ENABLE_Msk;
+	HAL_InitTick(IRQ_PRI_SYSTICK);
+	
     flash_init();
 
     //init USB CDC
@@ -93,9 +132,8 @@ int main()
     USBAPP_Init();
     VCOM_Open();
     
-
-
-    waitForUSBconnection();
+    HAL_Delay(500);
+    //waitForUSBconnection();
 
     if (cdcIsConnected) {
         //uint32_t start = HAL_GetTick();
@@ -154,16 +192,17 @@ int main()
     //     }
     // }
 
-    // Deinit USB
-    //USBD_DeInit(&USBD_Device);
-
-    for(;;);
 
     USBAPP_Deinit();
+    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
 
-    // Disable IRQs
-    //__disable_irq(); __DSB(); __ISB();
+    jump_to_application
+	(
+    		0x6010231c|1, //ResetISR_C() Function-Address of the Application
+						  //The last bit needs to be == 1 ( |1 ) to create a
+						  //valid Thumb-Instruction Jump
+			0x20068000,   //Address to the new StackTop
+			0x60102000	  //Location of the new Vectortable
+	);
 
-    // Jump to main app
-    ((void (*)(void))(*((uint32_t*) (MAIN_APP_ADDR+4))))();
 }

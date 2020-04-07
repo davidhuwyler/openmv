@@ -260,7 +260,7 @@ usb_status_t USB_DeviceCdcVcomCallback(class_handle_t handle, uint32_t event, vo
 				if (epCbParam->length != (uint32_t)-1L) 
                 {
 						uint8_t Buf[VCP_RINGBLK_SIZE];
-						uint32_t bytes;					
+						uint32_t bytes;
 
 						RingBlk_FixBlkFillCnt(&s_rxRB, epCbParam->length, &s_pCurRxBuf);
 						bytes = RingBlk_Read1Blk(&s_rxRB, Buf, sizeof(Buf));
