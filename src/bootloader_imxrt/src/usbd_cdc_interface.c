@@ -28,9 +28,6 @@ static const    uint32_t bootloader_version = 0xABCD0002;
 
 static uint8_t initBootloaderAnser[] = { 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00 };
 
-/* USB handler declaration */
-//extern USBD_HandleTypeDef  USBD_Device;
-
 enum bootldr_cmd {
     BOOTLDR_START   = 0xABCD0001,
     BOOTLDR_RESET   = 0xABCD0002,
@@ -42,7 +39,6 @@ enum bootldr_cmd {
 void CDC_Tx(uint8_t *buf, uint32_t len)
 {
     VCOM_Write(buf, len);
-    //VCOM_OmvWriteAlways(buf,len);
 }
 
 /**
@@ -120,7 +116,6 @@ int8_t CDC_Itf_Receive(uint8_t *Buf, uint32_t Len)
     }
     return USBD_OK;
 }
-
 
 uint8_t USBD_VCP_Connected(void)
 {

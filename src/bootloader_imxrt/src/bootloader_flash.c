@@ -33,7 +33,6 @@ void flash_init(void)
     flexspi_nor_init();
 }
 
-
 /* 
     STM32 (OpenMV) sectors are translated to i.MX RT QSPI Blocks:
 
@@ -73,15 +72,6 @@ void flash_write(const uint32_t *src, uint32_t dst, uint32_t size)
     primask = DisableGlobalIRQ();
 
     flexspi_nor_flash_program(FLEXSPI,dst,src,size);
-
-    // for (int i=0; i<size/256; i++) {
-    //     if (flexspi_nor_flash_page_program(FLEXSPI, dst, src) != kStatus_Success) {
-    //         // error occurred during flash write
-    //         __fatal_error();
-    //     }
-    //     src += 64;
-    //     dst += 256;
-    // }
 
     EnableGlobalIRQ(primask);
 }
